@@ -9,7 +9,7 @@ try:
 except Exception as err:
     print "Could not load modules needed for AndorCCD:", err
 
-class AndorCCDHardwareComponent(HardwareComponent):
+class AndorCCDHW(HardwareComponent):
     
     def setup(self):
         self.name = "andor_ccd"

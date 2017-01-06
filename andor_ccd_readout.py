@@ -40,7 +40,7 @@ def pixel2wavelength(grating_position, pixel_index, binning = 1):
                       + np.sin(psi+0.5*gamma+eta)))
 
 
-class AndorCCDReadout(Measurement):
+class AndorCCDReadoutMeasure(Measurement):
 
     name = "andor_ccd_readout"
     
