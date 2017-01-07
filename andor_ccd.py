@@ -3,11 +3,12 @@ Created on May 6, 2014
 
 @author: lab
 '''
+from __future__ import absolute_import, print_function
 from ScopeFoundry import HardwareComponent
 try:
     from .andor_ccd_interface import AndorCCD, AndorReadMode, DEFAULT_TEMPERATURE
 except Exception as err:
-    print "Could not load modules needed for AndorCCD:", err
+    print("Could not load modules needed for AndorCCD:", err)
 
 class AndorCCDHW(HardwareComponent):
     
@@ -121,7 +122,7 @@ class AndorCCDHW(HardwareComponent):
             self.status.updated_text_value[str].connect(self.gui.ui.andor_ccd_status_label.setText)
         
     def connect(self):
-        if self.debug: print "Connecting to Andor EMCCD Counter"
+        if self.debug: self.log.debug( "Connecting to Andor EMCCD Counter" )
         
         # Open connection to hardware
         self.andor_ccd = AndorCCD(debug = self.debug)
@@ -258,9 +259,9 @@ class AndorCCDHW(HardwareComponent):
             if bg.shape == self.andor_ccd.buffer.shape:
                 return True
             else:
-                print "Background not the correct shape", self.andor_ccd.buffer.shape, bg.shape
+                self.log.debug( "Background not the correct shape {} {}".format(self.andor_ccd.buffer.shape, bg.shape))
         else:
-            print "No Background available, raw data shown"
+            self.log.info( "No Background available, raw data shown" )
     
         return False
     
@@ -297,8 +298,8 @@ class AndorCCDHW(HardwareComponent):
     def read_temp_op(self):
         #print self.andor_ccd.get_status()
 
-        print self.andor_ccd.get_temperature_range()
-        print self.andor_ccd.get_temperature()
-        print self.andor_ccd.get_cooler()
+        self.log.debug("get_temperature_range: {}".format(self.andor_ccd.get_temperature_range()))
+        self.log.debug("get_temperature: {}".format(self.andor_ccd.get_temperature()))
+        self.log.debug("get_cooler: {}".format(self.andor_ccd.get_cooler()))
         #self.gui.ui.andor_ccd_shutter_open_checkBox.setChecked(True)
         

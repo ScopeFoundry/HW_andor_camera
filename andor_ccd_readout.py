@@ -1,12 +1,10 @@
 import numpy as np
 import time
-import threading
-from PySide import QtCore
 import pyqtgraph as pg
 
 from ScopeFoundry import Measurement 
 
-import matplotlib.gridspec as gridspec 
+#import matplotlib.gridspec as gridspec 
 from time import sleep
 
 from ScopeFoundry import h5_io
@@ -105,7 +103,7 @@ class AndorCCDReadoutMeasure(Measurement):
 
 
 
-    def _run(self):
+    def run(self):
     
         #setup data arrays         
         
@@ -120,10 +118,10 @@ class AndorCCDReadoutMeasure(Measurement):
         wait_time = 0.01 #np.min(1.0,np.max(0.05*t_acq, 0.05)) # limit update period to 50ms (in ms) or as slow as 1sec
         
         try:
-            print "starting acq"
+            self.log.info("starting acq")
             ccd.start_acquisition()
         
-            print "checking..."
+            self.log.info( "checking..." )
             t0 = time.time()
             while not self.interrupt_measurement_called:
             
@@ -147,9 +145,9 @@ class AndorCCDReadoutMeasure(Measurement):
                             if bg.shape == self.buffer_.shape:
                                 self.buffer_ = self.buffer_ - bg
                             else:
-                                print "Background not the correct shape", self.buffer_.shape, bg.shape
+                                self.log.warning("Background not the correct shape {} != {}".format( self.buffer_.shape, bg.shape))
                         else:
-                            print "No Background available, raw data shown"
+                            self.log.warning( "No Background available, raw data shown")
                     self.spectra_data = np.average(self.buffer_, axis=0)
  
  
@@ -163,7 +161,7 @@ class AndorCCDReadoutMeasure(Measurement):
                     #sleep(wait_time)
                     sleep(0.01)
         except Exception as err:
-            print self.name, "error:", err
+            self.log.error( "{} error: {}".format(self.name, err))
         finally:            
             # while-loop is complete
             self.gui.andor_ccd_hc.interrupt_acquisition()
@@ -202,9 +200,9 @@ class AndorCCDReadoutMeasure(Measurement):
 
                 self.fname = "%i_%s.npz" % (time.time(), self.name)
                 np.savez_compressed(self.fname, **save_dict)
-                print self.name, "saved:", self.fname
+                self.log.info( "saved: " + self.fname)
                 
-                print "Andor CCD single acq successfully acquired"
+                self.log.info( "Andor CCD single acq successfully acquired")
                 self.read_single.update_value(False)    
 
             # Send completion signals
@@ -285,7 +283,7 @@ class AndorCCDStepAndGlue(Measurement):
             if bg is not None and bg.shape == ccd.buffer.shape:
                 h5m['andor_ccd_bg'] = self.bg
             else:
-                print "Background not avail or the correct shape", ccd.buffer.shape#,# bg#bg.shape
+                self.log.warning( "Background not avail or the correct shape {}".format(ccd.buffer.shape))#,# bg#bg.shape
                 self.bg_subtract.update_value(False)
         try:
             for ii, center_wl in enumerate(self.center_wl_array):
@@ -301,7 +299,7 @@ class AndorCCDStepAndGlue(Measurement):
                 self.wls[ii,:]  = pixel2wavelength(acton_spec_hc.center_wl.val, 
                                              np.arange(width_px), binning=ccd.get_current_hbin())
 
-                print "starting ccd acq"
+                self.log.info("starting ccd acq")
                 ccd.start_acquisition()
                 
                 # wait until ccd is done acquiring
@@ -314,8 +312,8 @@ class AndorCCDStepAndGlue(Measurement):
     
                         if self.bg_subtract.val:
                             self.ccd_buffer = self.ccd_buffer - self.bg
-                            print self.bg.shape
-                            print self.ccd_buffer.shape
+                            self.log.debug("self.bg.shape {}".format(self.bg.shape))
+                            self.log.debug("self.ccd_buffer.shape {}".format(self.ccd_buffer.shape))
                             
 
                         self.spectra_data[ii,:,:] = self.ccd_buffer
@@ -325,7 +323,7 @@ class AndorCCDStepAndGlue(Measurement):
                 self.h5_file.flush()
                         
         except Exception as err:
-            print self.name, "error:", err
+            self.log.error( "{} error: {}".format(self.name, err))
         finally:            
             self.gui.andor_ccd_hc.interrupt_acquisition()
             self.h5_file.close()
