@@ -12,7 +12,6 @@ import logging
 from enum import Enum
 
 from . import andor_ccd_consts as consts
-from pygame.examples.scaletest import SpeedTest
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,7 @@ class AndorCCD(object):
             raise IOError( "Andor CCD: Error Getting Hardware Version.")
         else: 
             self.hardware_version = tuple([ h.value for h in HW])
-            if self.debug: logger.debug('Hardware information: %g'% self.hardware_version)
+            if self.debug: logger.debug('Hardware information: {}'.format( repr(self.hardware_version)))
 
         SW = [ c_int(i) for i in range(6) ] 
         retval = andorlib.GetSoftwareVersion( *[byref(s) for s in SW] )
@@ -83,7 +82,7 @@ class AndorCCD(object):
             raise IOError( "Andor CCD: Error Getting Software Version.")
         else: 
             self.software_version = tuple([ s.value for s in SW ])
-            if self.debug: logger.debug('Software information: %g' % self.software_version)
+            if self.debug: logger.debug('Software information: %s' % repr(self.software_version))
             
             
         pixelsX = c_int(1)
@@ -131,7 +130,7 @@ class AndorCCD(object):
             retval = andorlib.GetPreAmpGain(i, byref(gain)) 
             assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
             self.preamp_gains.append(gain.value)
-        if self.debug: logger.debug('Preamp gains available: %g' % self.preamp_gains)
+        if self.debug: logger.debug('Preamp gains available: %s' % self.preamp_gains)
 
         self.set_preamp_gain()
         
@@ -380,7 +379,7 @@ class AndorCCD(object):
             retval = andorlib.GetVSSpeed(i, byref(speed))
             assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
             self.VSSpeeds.append(speed.value)
-        if self.debug: logger.debug( 'Vertical speeds [microseconds per pixel shift]: %g' % self.VSSpeeds)
+        if self.debug: logger.debug( 'Vertical speeds [microseconds per pixel shift]: %s' % self.VSSpeeds)
     
     def get_hs_speed_val_conventional(self, speed_index):
         pass

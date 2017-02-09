@@ -125,31 +125,31 @@ class AndorCCDHW(HardwareComponent):
         if self.debug: self.log.debug( "Connecting to Andor EMCCD Counter" )
         
         # Open connection to hardware
-        self.andor_ccd = AndorCCD(debug = self.debug)
+        self.ccd_dev = AndorCCD(debug = self.debug)
 
         # connect logged quantities
-        self.status.hardware_read_func = self.andor_ccd.get_status
-        self.temperature.hardware_read_func = self.andor_ccd.get_temperature
-        self.exposure_time.hardware_set_func = self.andor_ccd.set_exposure_time
-        self.exposure_time.hardware_read_func = self.andor_ccd.get_exposure_time
-        self.em_gain.hardware_read_func = self.andor_ccd.get_EMCCD_gain
-        self.em_gain.hardware_set_func = self.andor_ccd.set_EMCCD_gain
-        self.output_amp.hardware_read_func = self.andor_ccd.get_output_amp
-        self.output_amp.hardware_set_func = self.andor_ccd.set_output_amp
-        self.ad_chan.hardware_set_func = self.andor_ccd.set_ad_channel
-        self.hs_speed_em.hardware_set_func = self.andor_ccd.set_hs_speed_em
-        self.vs_speed.hardware_set_func = self.andor_ccd.set_vs_speed
-        self.hs_speed_conventional.hardware_set_func = self.andor_ccd.set_hs_speed_conventional
-        self.shutter_open.hardware_set_func  = self.andor_ccd.set_shutter_open
-        self.trigger_mode.hardware_set_func = self.andor_ccd.set_trigger_mode
-        self.hflip.hardware_read_func = self.andor_ccd.get_image_hflip
-        self.hflip.hardware_set_func = self.andor_ccd.set_image_hflip
-        self.vflip.hardware_read_func = self.andor_ccd.get_image_vflip
-        self.vflip.hardware_set_func = self.andor_ccd.set_image_vflip
+        self.status.hardware_read_func = self.ccd_dev.get_status
+        self.temperature.hardware_read_func = self.ccd_dev.get_temperature
+        self.exposure_time.hardware_set_func = self.ccd_dev.set_exposure_time
+        self.exposure_time.hardware_read_func = self.ccd_dev.get_exposure_time
+        self.em_gain.hardware_read_func = self.ccd_dev.get_EMCCD_gain
+        self.em_gain.hardware_set_func = self.ccd_dev.set_EMCCD_gain
+        self.output_amp.hardware_read_func = self.ccd_dev.get_output_amp
+        self.output_amp.hardware_set_func = self.ccd_dev.set_output_amp
+        self.ad_chan.hardware_set_func = self.ccd_dev.set_ad_channel
+        self.hs_speed_em.hardware_set_func = self.ccd_dev.set_hs_speed_em
+        self.vs_speed.hardware_set_func = self.ccd_dev.set_vs_speed
+        self.hs_speed_conventional.hardware_set_func = self.ccd_dev.set_hs_speed_conventional
+        self.shutter_open.hardware_set_func  = self.ccd_dev.set_shutter_open
+        self.trigger_mode.hardware_set_func = self.ccd_dev.set_trigger_mode
+        self.hflip.hardware_read_func = self.ccd_dev.get_image_hflip
+        self.hflip.hardware_set_func = self.ccd_dev.set_image_hflip
+        self.vflip.hardware_read_func = self.ccd_dev.get_image_vflip
+        self.vflip.hardware_set_func = self.ccd_dev.set_image_vflip
         
         # Update the ROI min and max values to the CCD dimensions
-        width = self.andor_ccd.Nx
-        height = self.andor_ccd.Ny
+        width = self.ccd_dev.Nx
+        height = self.ccd_dev.Ny
         self.roi_fvb_hbin.change_min_max(1, width)
         self.roi_img_hbin.change_min_max(1, width)
         self.roi_img_hend.change_min_max(1, width)
@@ -171,8 +171,8 @@ class AndorCCDHW(HardwareComponent):
         
         # Choices for the horizontal shift speeds in EMCCD mode
         choices = []
-        for chan_i in range(self.andor_ccd.numADChan):
-            for speed in enumerate(self.andor_ccd.HSSpeeds_EM[chan_i]):
+        for chan_i in range(self.ccd_dev.numADChan):
+            for speed in enumerate(self.ccd_dev.HSSpeeds_EM[chan_i]):
                 choices.append((
                                 str.format("Chan {} - {:.2f} MHz", chan_i, speed[1]),
                                 speed[0]))
@@ -180,8 +180,8 @@ class AndorCCDHW(HardwareComponent):
         
         # Choices for the horizontal shift speeds in conventional mode
         choices = []
-        for chan_i in range(self.andor_ccd.numADChan):
-            for speed in enumerate(self.andor_ccd.HSSpeeds_Conventional[chan_i]):
+        for chan_i in range(self.ccd_dev.numADChan):
+            for speed in enumerate(self.ccd_dev.HSSpeeds_Conventional[chan_i]):
                 choices.append((
                                 str.format("Chan {} - {:.2f} MHz", chan_i,speed[1]),
                                 speed[0]))
@@ -189,32 +189,32 @@ class AndorCCDHW(HardwareComponent):
         
         # Choices for the vertical shift speeds in conventional mode
         choices = []
-        for speed_i in range(self.andor_ccd.numVSSpeeds):    
+        for speed_i in range(self.ccd_dev.numVSSpeeds):    
             choices.append((
-                            str.format("Speed {} - {:.2f} us", speed_i, self.andor_ccd.VSSpeeds[speed_i]),
+                            str.format("Speed {} - {:.2f} us", speed_i, self.ccd_dev.VSSpeeds[speed_i]),
                             speed_i))
         self.vs_speed.change_choice_list(choices)
         
         # Choices for the AD channels
         choices = []
-        for chan_i in range(self.andor_ccd.numADChan):
+        for chan_i in range(self.ccd_dev.numADChan):
             choices.append((str.format("Channel {}", chan_i), chan_i))
         self.ad_chan.change_choice_list(choices)
         
         # For all of the logged quantities, call read from hardware to make sync
         # everything.
-        for name, lq in self.logged_quantities.items():
+        for lq in self.settings.as_list():
             lq.read_from_hardware()        
         
         # Set some default values that are useful
-        self.andor_ccd.set_temperature(DEFAULT_TEMPERATURE)
+        self.ccd_dev.set_temperature(DEFAULT_TEMPERATURE)
         
         if not self.has_been_connected_once:
             # initialize the readout parameters
             self.output_amp.update_value(0)        #EMCCD mode
             self.ad_chan.update_value(0)           #14-bit AD Chan
             self.hs_speed_em.update_value(0)       #10 MHz readout speed
-            self.vs_speed.update_value(self.andor_ccd.numVSSpeeds-1)          #Slowest vertical shift speed
+            self.vs_speed.update_value(self.ccd_dev.numVSSpeeds-1)          #Slowest vertical shift speed
             self.hflip.update_value(True)          #Default to true horizontal flip
             self.exposure_time.update_value(1)     #Default to a 1 s integration
             self.shutter_open.update_value(False)  #Close the shutter.
@@ -240,26 +240,28 @@ class AndorCCDHW(HardwareComponent):
         
 
     def disconnect(self):
-        #disconnect hardware
-        self.andor_ccd.close()
         
         #disconnect logged quantities from hardware
-        for lq in self.logged_quantities.values():
-            lq.hardware_read_func = None
-            lq.hardware_set_func = None
-        
+        self.settings.disconnect_all_from_hardware()
+
         # clean up hardware object
-        del self.andor_ccd
+
+        if hasattr(self, 'ccd_dev'):        
+            #disconnect hardware
+            self.ccd_dev.close()
+    
+            
+            del self.ccd_dev
         
         self.is_connected = False
     
     def is_background_valid(self):
         bg = self.background
         if bg is not None:
-            if bg.shape == self.andor_ccd.buffer.shape:
+            if bg.shape == self.ccd_dev.buffer.shape:
                 return True
             else:
-                self.log.debug( "Background not the correct shape {} {}".format(self.andor_ccd.buffer.shape, bg.shape))
+                self.log.debug( "Background not the correct shape {} {}".format(self.ccd_dev.buffer.shape, bg.shape))
         else:
             self.log.info( "No Background available, raw data shown" )
     
@@ -268,22 +270,22 @@ class AndorCCDHW(HardwareComponent):
     def interrupt_acquisition(self):
         '''If the camera status is not IDLE, calls abort_acquisition()
         '''
-        stat = self.andor_ccd.get_status()
+        stat = self.ccd_dev.get_status()
         if stat != 'IDLE':
-            self.andor_ccd.abort_acquisition()
+            self.ccd_dev.abort_acquisition()
     
     def set_readout(self):
         """Sets ROI based on values in LoggedQuantities for the current readout mode
         Also sets the flip"""
         
-        self.andor_ccd.set_image_flip(self.hflip.val, self.vflip.val)
+        self.ccd_dev.set_image_flip(self.hflip.val, self.vflip.val)
         
         ro_mode = self.readout_mode.val
-        #ro_mode = self.andor_ccd.get_ro_mode # FIXME
+        #ro_mode = self.ccd_dev.get_ro_mode # FIXME
         if ro_mode ==  AndorReadMode.FullVerticalBinning.value:
-            self.andor_ccd.set_ro_full_vertical_binning(self.roi_fvb_hbin.val) #FIXME
+            self.ccd_dev.set_ro_full_vertical_binning(self.roi_fvb_hbin.val) #FIXME
         elif ro_mode ==  AndorReadMode.Image.value:
-            self.andor_ccd.set_ro_image_mode(
+            self.ccd_dev.set_ro_image_mode(
                                              self.roi_img_hbin.val,
                                              self.roi_img_vbin.val, 
                                              self.roi_img_hstart.val,
@@ -291,15 +293,15 @@ class AndorCCDHW(HardwareComponent):
                                              self.roi_img_vstart.val,
                                              self.roi_img_vend.val)
         elif ro_mode ==  AndorReadMode.SingleTrack.value:
-            self.andor_ccd.set_ro_single_track(self.roi_st_center.val, self.roi_st_width.val, self.roi_st_hbin.val)
+            self.ccd_dev.set_ro_single_track(self.roi_st_center.val, self.roi_st_width.val, self.roi_st_hbin.val)
         else:
             raise NotImplementedError("ro mode not implemented %s", ro_mode)
     
     def read_temp_op(self):
-        #print self.andor_ccd.get_status()
+        #print self.ccd_dev.get_status()
 
-        self.log.debug("get_temperature_range: {}".format(self.andor_ccd.get_temperature_range()))
-        self.log.debug("get_temperature: {}".format(self.andor_ccd.get_temperature()))
-        self.log.debug("get_cooler: {}".format(self.andor_ccd.get_cooler()))
+        self.log.debug("get_temperature_range: {}".format(self.ccd_dev.get_temperature_range()))
+        self.log.debug("get_temperature: {}".format(self.ccd_dev.get_temperature()))
+        self.log.debug("get_cooler: {}".format(self.ccd_dev.get_cooler()))
         #self.gui.ui.andor_ccd_shutter_open_checkBox.setChecked(True)
         

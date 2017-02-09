@@ -46,17 +46,12 @@ class AndorCCDReadoutMeasure(Measurement):
         
         self.display_update_period = 0.050 #seconds
 
-        #connect events
-        self.gui.ui.andor_ccd_acquire_cont_checkBox.stateChanged.connect(self.start_stop)
-        self.gui.ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
-        self.gui.ui.andor_ccd_read_single_pushButton.clicked.connect(self.acquire_single_start)
-        
         #local logged quantities
         self.bg_subtract = self.add_logged_quantity('bg_subtract', dtype=bool, initial=False, ro=False)
         self.acquire_bg  = self.add_logged_quantity('acquire_bg',  dtype=bool, initial=False, ro=False)
         self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
         
-        self.bg_subtract.connect_bidir_to_widget(self.gui.ui.andor_ccd_bgsub_checkBox)
+
     
     def acquire_bg_start(self):
         self.acquire_bg.update_value(True)
@@ -67,17 +62,12 @@ class AndorCCDReadoutMeasure(Measurement):
         self.start()
 
     def setup_figure(self):
-        #Andor CCD data
-        """self.fig_ccd_image = self.gui.add_figure('ccd_image', self.gui.ui.plot_andor_ccd_widget)
-        self.fig_ccd_image.clf()
-        """
 
-        if hasattr(self, 'graph_layout'):
-            self.graph_layout.deleteLater() # see http://stackoverflow.com/questions/9899409/pyside-removing-a-widget-from-a-layout
-            del self.graph_layout
+        #if hasattr(self, 'graph_layout'):
+        #    self.graph_layout.deleteLater() # see http://stackoverflow.com/questions/9899409/pyside-removing-a-widget-from-a-layout
+        #    del self.graph_layout
             
-        self.graph_layout=pg.GraphicsLayoutWidget(border=(100,100,100))
-        self.gui.ui.plot_andor_ccd_widget.layout().addWidget(self.graph_layout)
+        self.ui = self.graph_layout = pg.GraphicsLayoutWidget(border=(100,100,100))
         
         self.spec_plot = self.graph_layout.addPlot()
         self.spec_plot_line = self.spec_plot.plot([1,3,2,4,3,5])
@@ -100,35 +90,35 @@ class AndorCCDReadoutMeasure(Measurement):
         self.graph_layout.addItem(self.hist_lut)
 
 
-
-
-
     def run(self):
     
         #setup data arrays         
         
-        ccd = self.gui.andor_ccd_hc.andor_ccd
+        ccd_dev = self.app.hardware['andor_ccd'].ccd_dev
         
-        width_px = ccd.Nx_ro
-        height_px = ccd.Ny_ro
+        width_px = ccd_dev.Nx_ro
+        height_px = ccd_dev.Ny_ro
         
         
-        t_acq = self.gui.andor_ccd_hc.exposure_time.val #in seconds
+        t_acq = self.app.hardware['andor_ccd'].settings['exposure_time'] #in seconds
         
         wait_time = 0.01 #np.min(1.0,np.max(0.05*t_acq, 0.05)) # limit update period to 50ms (in ms) or as slow as 1sec
         
         try:
             self.log.info("starting acq")
-            ccd.start_acquisition()
+            ccd_dev.start_acquisition()
         
             self.log.info( "checking..." )
             t0 = time.time()
             while not self.interrupt_measurement_called:
             
-                self.wls  = pixel2wavelength(self.gui.acton_spec_hc.center_wl.val, 
-                              np.arange(width_px), binning=ccd.get_current_hbin())
+                if 'acton_spec' in self.app.hardware:
+                    self.wls  = pixel2wavelength(self.gui.acton_spec_hc.center_wl.val, 
+                                  np.arange(width_px), binning=ccd_dev.get_current_hbin())
+                else:
+                    self.wls = np.arange(width_px)
 
-                stat = ccd.get_status()
+                stat = ccd_dev.get_status()
                 if stat == 'IDLE':
                     # grab data
                     t1 = time.time()
@@ -136,7 +126,7 @@ class AndorCCDReadoutMeasure(Measurement):
                     t0 = t1
                 
                 
-                    self.buffer_ = ccd.get_acquired_data()
+                    self.buffer_ = ccd_dev.get_acquired_data()
 
                 
                     if self.bg_subtract.val and not self.acquire_bg.val:
@@ -155,7 +145,7 @@ class AndorCCDReadoutMeasure(Measurement):
                         break # end the while loop for non-continuous scans
                     else:
                         # restart acq
-                        ccd.start_acquisition()
+                        ccd_dev.start_acquisition()
                     
                 else:
                     #sleep(wait_time)
@@ -164,7 +154,7 @@ class AndorCCDReadoutMeasure(Measurement):
             self.log.error( "{} error: {}".format(self.name, err))
         finally:            
             # while-loop is complete
-            self.gui.andor_ccd_hc.interrupt_acquisition()
+            self.app.hardware['andor_ccd'].interrupt_acquisition()
 
             
             #is this right place to put this?
@@ -245,8 +235,9 @@ class AndorCCDStepAndGlue(Measurement):
     def _run(self):
 
         # Hardware
-        ccd = self.gui.andor_ccd_hc.andor_ccd
-        acton_spec_hc = self.gui.acton_spec_hc
+        ccd = self.gui.andor_ccd_hc.ccd_dev
+        if 'acton_spec' in self.app.hardware:
+            acton_spec_hc = self.gui.acton_spec_hc
     
         width_px = ccd.Nx_ro
         height_px = ccd.Ny_ro
