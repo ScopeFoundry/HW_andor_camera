@@ -52,6 +52,40 @@ class AndorCCDReadoutMeasure(Measurement):
         self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
         
 
+        self.settings.New('calib_offset', unit='nm', initial=0)
+        self.settings.New('calib_focal_length', unit='mm', initial=300)
+        self.settings.New('calib_delta', unit='radian')
+        self.settings.New('calib_gamma', unit='radian')
+        self.settings.New('calib_grating_groves', unit='1/mm')
+        self.settings.New('calib_pixel_size', unit='um')
+        self.settings.New('calib_m_order', dtype=int)
+        
+    def pixel2wavelength(self, grating_position, pixel_index):
+        # Wavelength calibration based off of work on 4/30/2014
+        # changed 3/20/2015 after apd alignement offset = -5.2646 #nm
+        offset = self.settings['calib_offset']
+        focal_length = self.settings['calib_focal_length']
+        delta = self.settings['calib_delta']
+        gamma = self.settings['calib_gamma']
+        grating_spacing = 1./self.settings['calib_grating_groves']  #mm
+        pixel_size = self.settings['calib_pixel_size']*1e-6  #mm   #Binning!
+        m_order = self.settings['calib_m_order'] #diffraction order
+        
+        ccd_hw = self.app.hardware['andor_ccd']
+        binning_yx = ccd_hw.settings['ccd_shape']/ ccd_hw.settings['readout_shape']
+        binning = binning_yx[1]
+            
+        wl_center = (grating_position + offset)*1e-6
+        px_from_center = pixel_index*binning +binning/2. - 0.5*ccd_hw.settings['ccd_shape'][1]
+        
+        psi = np.arcsin(m_order* wl_center / (2*grating_spacing*np.cos(gamma/2)))
+        
+        eta = np.arctan(px_from_center*pixel_size*np.cos(delta) /
+        (focal_length+px_from_center*pixel_size*np.sin(delta)))
+        
+        return 1e6*((grating_spacing/m_order)
+                        *(np.sin(psi-0.5*gamma)
+                          + np.sin(psi+0.5*gamma+eta)))        
     
     def acquire_bg_start(self):
         self.acquire_bg.update_value(True)
@@ -113,8 +147,10 @@ class AndorCCDReadoutMeasure(Measurement):
             while not self.interrupt_measurement_called:
             
                 if 'acton_spec' in self.app.hardware:
-                    self.wls  = pixel2wavelength(self.gui.acton_spec_hc.center_wl.val, 
-                                  np.arange(width_px), binning=ccd_dev.get_current_hbin())
+                    self.wls  = self.pixel2wavelength(
+                                  self.app.hardware['acton_spec'].settings['center_wl'], 
+                                  np.arange(width_px))
+                                  #, binning=ccd_dev.get_current_hbin())
                 else:
                     self.wls = np.arange(width_px)
 

@@ -99,6 +99,9 @@ class AndorCCDHW(HardwareComponent):
         self.roi_fvb_hbin = self.add_logged_quantity("roi_fvb_hbin", dtype=int, unit='px', 
                                                      ro=False, initial=1)
         
+        self.settings.New('ccd_shape', dtype=int, array=True, ro=True)        
+        self.settings.New('readout_shape', dtype=int, array=True, ro=True)
+        
         # Horizontal and vertical flipping
         self.hflip = self.add_logged_quantity("hflip", 
                                               dtype=bool, initial=True)
@@ -107,7 +110,6 @@ class AndorCCDHW(HardwareComponent):
 
         # A single operation to update the ROI values in the camera
         self.add_operation("set_readout", self.set_readout)
-        self.add_operation("read_temp", self.read_temp_op)
         
         #connect to custom gui - NOTE:  these are not disconnected!
         if hasattr(self.gui.ui, 'andor_ccd_int_time_doubleSpinBox'):
@@ -150,6 +152,7 @@ class AndorCCDHW(HardwareComponent):
         # Update the ROI min and max values to the CCD dimensions
         width = self.ccd_dev.Nx
         height = self.ccd_dev.Ny
+        self.settings['ccd_shape'] = height, width
         self.roi_fvb_hbin.change_min_max(1, width)
         self.roi_img_hbin.change_min_max(1, width)
         self.roi_img_hend.change_min_max(1, width)
@@ -296,6 +299,8 @@ class AndorCCDHW(HardwareComponent):
             self.ccd_dev.set_ro_single_track(self.roi_st_center.val, self.roi_st_width.val, self.roi_st_hbin.val)
         else:
             raise NotImplementedError("ro mode not implemented %s", ro_mode)
+        
+        self.settings['readout_shape'] = [self.ccd_dev.Ny_ro, self.ccd_dev.Nx_ro]
     
     def read_temp_op(self):
         #print self.ccd_dev.get_status()

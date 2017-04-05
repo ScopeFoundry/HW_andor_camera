@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 if platform.architecture()[0] == '64bit':
-    #andorlibpath = str(os.path.join(os.path.dirname(__file__),"atmcd64d.dll"))
     andorlibpath = r"C:\Program Files\Andor SOLIS\atmcd64d_legacy.dll"
+    if not os.path.exists(andorlibpath):    
+        andorlibpath = str(os.path.join(os.path.dirname(__file__),"atmcd64d.dll"))
 else:
     andorlibpath = str(os.path.join(os.path.dirname(__file__),"atmcd32d.dll"))
 #print andorlibpath
