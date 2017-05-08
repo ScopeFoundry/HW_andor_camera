@@ -51,16 +51,6 @@ class AndorCCDReadoutMeasure(Measurement):
         self.acquire_bg  = self.add_logged_quantity('acquire_bg',  dtype=bool, initial=False, ro=False)
         self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
         
-        self.settings.New('calib_offset', dtype=float)
-        self.settings.New('calib_focal_length')
-        self.settings.New('calib_delta')
-        self.settings.New('calib_gamma')
-        self.settings.New('calib_grating_spacing')
-        self.settings.New('calib_pixel_size')
-        self.settings.New('calib_m_order')
-        
-        
-
         self.settings.New('calib_offset', unit='nm', initial=0)
         self.settings.New('calib_focal_length', unit='mm', initial=300)
         self.settings.New('calib_delta', unit='radian')
