@@ -59,15 +59,17 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.New('calib_pixel_size', unit='um')
         self.settings.New('calib_m_order', dtype=int)
         
+        self.add_operation('run_acquire_bg', self.acquire_bg_start)
+        self.add_operation('run_acquire_single', self.acquire_single_start)
+        
+        
     def pixel2wavelength(self, grating_position, pixel_index):
-        # Wavelength calibration based off of work on 4/30/2014
-        # changed 3/20/2015 after apd alignement offset = -5.2646 #nm
-        offset = self.settings['calib_offset']
-        focal_length = self.settings['calib_focal_length']
-        delta = self.settings['calib_delta']
-        gamma = self.settings['calib_gamma']
+        offset = self.settings['calib_offset'] # nm
+        focal_length = self.settings['calib_focal_length'] # mm
+        delta = self.settings['calib_delta'] # rad
+        gamma = self.settings['calib_gamma'] #rad
         grating_spacing = 1./self.settings['calib_grating_groves']  #mm
-        pixel_size = self.settings['calib_pixel_size']*1e-6  #mm   #Binning!
+        pixel_size = self.settings['calib_pixel_size']*1e-3  #mm   #Binning!
         m_order = self.settings['calib_m_order'] #diffraction order
         
         ccd_hw = self.app.hardware['andor_ccd']
@@ -145,9 +147,9 @@ class AndorCCDReadoutMeasure(Measurement):
             t0 = time.time()
             while not self.interrupt_measurement_called:
             
-                if 'acton_spec' in self.app.hardware:
+                if 'acton_spectrometer' in self.app.hardware:
                     self.wls  = self.pixel2wavelength(
-                                  self.app.hardware['acton_spec'].settings['center_wl'], 
+                                  self.app.hardware['acton_spectrometer'].settings['center_wl'], 
                                   np.arange(width_px))
                                   #, binning=ccd_dev.get_current_hbin())
                 else:
