@@ -18,7 +18,7 @@ class AndorCCDHW(HardwareComponent):
         self.background = None
         
         # Create logged quantities
-        self.status = self.add_logged_quantity(name='ccd_satus', dtype=str, fmt="%s",ro=True)
+        self.status = self.add_logged_quantity(name='ccd_status', dtype=str, fmt="%s",ro=True)
         
         self.temperature = self.add_logged_quantity(name="temperature", dtype=int,
                                                     ro=True, unit = "C", vmin = -300, vmax = 300, si=False)
