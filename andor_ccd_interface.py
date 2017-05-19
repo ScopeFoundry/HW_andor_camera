@@ -43,6 +43,12 @@ class AndorReadMode(Enum):
     SingleTrack = 3
     Image = 4
 
+def _err(retval):
+    if retval == consts.DRV_SUCCESS:
+        return retval
+    else:
+        raise IOError( "Andor DRV Failure %i" % retval)
+
 
 class AndorCCD(object):
     
@@ -115,6 +121,10 @@ class AndorCCD(object):
         self.ampNum = ampNum.value
         if debug: logger.debug( 'Number of output amplifiers: %g' % self.ampNum ) 
         
+        self.set_aq_single_scan() # set to single scan by default
+        self.set_num_accumulations(1)
+        self.set_num_kinetics(1)
+        
         #shift speeds
         self.read_shift_speeds()
         self.set_hs_speed_em()
@@ -155,11 +165,8 @@ class AndorCCD(object):
         self.set_output_amp(DEFAULT_OUTPUT_AMP)  # Default output amplifier
         self.set_EMCCD_gain(DEFAULT_EM_GAIN)     # Default EM Gain
         
-    
-    #####
-    
-    
-    
+        
+    #####    
     
     def set_ad_channel(self,chan_i=0):
         assert chan_i in range(0,self.numADChan)
@@ -167,6 +174,17 @@ class AndorCCD(object):
         assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
         self.ad_chan = chan_i
         return self.ad_chan
+    
+    
+    def create_buffer(self):
+        if self.aq_mode in ('single', 'accumulate'):
+            self.buffer = np.zeros(shape=(self.Ny_ro, self.Nx_ro), dtype=np.int32 )     
+        elif self.aq_mode == 'kinetic':
+            self.get_num_kinetics()
+            self.buffer = np.zeros(shape=(self.num_kin, self.Ny_ro, self.Nx_ro), dtype=np.int32)  
+        print(self.buffer.shape)
+        return self.buffer
+    
     
     ##### ReadOut Modes #######################
     def set_readout_mode(self, ro_mode):
@@ -191,8 +209,8 @@ class AndorCCD(object):
         #self.outputHeight = 1
         self.Nx_ro = int(self.Nx/hbin)              
         self.Ny_ro = 1
-        self.buffer = np.zeros(shape=(self.Ny_ro, self.Nx_ro), dtype=np.int32 )       
-
+        self.create_buffer()
+        
     def set_ro_single_track(self, center, width = 1, hbin = 1):
         self.ro_mode = 'SINGLE_TRACK'
         retval = andorlib.SetReadMode(3)
@@ -212,8 +230,8 @@ class AndorCCD(object):
 
         self.ro_single_track_center = center
         self.ro_single_track_width = width
-        self.buffer = np.zeros(shape=(self.Ny_ro, self.Nx_ro), dtype=np.int32 )
         
+        self.create_buffer()
         
     def set_ro_multi_track(self, number, height, offset):
         # NOT YET IMPLEMENTED
@@ -260,7 +278,7 @@ class AndorCCD(object):
         
         logger.debug("self.Nx_ro: {}, self.Ny_ro: {}".format( self.Nx_ro, self.Ny_ro )) 
 
-        self.buffer = np.zeros(shape=(self.Ny_ro, self.Nx_ro), dtype=np.int32 )
+        self.create_buffer()
 
     ### Function to return the binning based on the current readout mode ####
     def get_current_hbin(self):
@@ -273,34 +291,56 @@ class AndorCCD(object):
     
     
     ##### Acquisition Modes #####
+    def set_aq_mode(self, mode):
+        assert mode in ('single', 'accumulate', 'kinetic')
+        if mode == 'single': return self.set_aq_single_scan()
+        if mode == 'accumulate': return self.set_aq_accumulate_scan()
+        if mode == 'kinetic': return self.set_aq_kinetic_scan()
+        
+    def get_aq_mode(self):
+        return self.aq_mode
+    
     def set_aq_single_scan(self, exposure=None):
-        retval = andorlib.SetAcquisitionMode(1)
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        self.aq_mode = 'single'
+        _err(andorlib.SetAcquisitionMode(1))
         
         if exposure is not None:
-            retval = andorlib.SetExposureTime(c_float(exposure))
-            assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+            _err(andorlib.SetExposureTime(c_float(exposure)))
         
-    def set_aq_accumulate_scan(self, exposure_time=None, num_accumulations=1, cycle_time=None):
-        retval = andorlib.SetAcquisitionMode(2)
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+    def set_aq_accumulate_scan(self, exposure_time=None, num_acc=None, cycle_time=None):
+        self.aq_mode = 'accumulate'
+
+        _err(andorlib.SetAcquisitionMode(2))
 
         if exposure_time is not None:
-            retval = andorlib.SetExposureTime(c_float(exposure_time))
-            assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
-            
-        retval = andorlib.SetNumberAccumulations(num_accumulations)
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+            _err(andorlib.SetExposureTime(c_float(exposure_time)))
+        
+        if num_acc is not None:
+            _err(andorlib.SetNumberAccumulations(num_acc))
 
         # cycle_time only valid with internal trigger
         if cycle_time is not None:
-            retval = andorlib.SetAccumulationCycleTime(cycle_time)
-            assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+            _err(andorlib.SetAccumulationCycleTime(cycle_time))
 
-    def set_aq_kinetic_scan(self):
-        # NOT YET IMPLEMENTED
-        # SetAcquistionMode(3)
-        raise NotImplementedError()
+    def set_aq_kinetic_scan(self, exp_time=None, 
+                            num_acc=None, acc_time=None,
+                            num_kin=None, kin_time=None):
+        self.aq_mode = 'kinetic'
+        
+        _err(andorlib.SetAcquisitionMode(3))
+
+        if exp_time is not None:
+            _err(andorlib.SetExposureTime(c_float(exp_time)))
+        if num_acc is not None:
+            _err(andorlib.SetNumberAccumulations(num_acc))
+        if acc_time is not None:
+            _err(andorlib.SetAccumulationCycleTime(acc_time))
+        if num_kin is not None:
+            _err(andorlib.SetNumberKinetics(num_kin))
+        # kinetic cycle time only valid with internal trigger
+        if kin_time is not None:
+            _err(andorlib.SetKineticCycleTime(kin_time))
+        print('kinetic')
         
     def set_aq_run_till_abort_scan(self):
         # NOT YET IMPLEMENTED
@@ -563,8 +603,8 @@ class AndorCCD(object):
 
     
     def get_acquired_data(self):
-        retval = andorlib.GetAcquiredData(self.buffer.ctypes.data_as(ctypes.POINTER(c_long)), c_uint(self.buffer.size))
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        print("buffer size", self.buffer.size)
+        _err(andorlib.GetAcquiredData(self.buffer.ctypes.data_as(ctypes.POINTER(c_long)), c_uint(self.buffer.size)))
         return self.buffer
 
     
@@ -595,6 +635,25 @@ class AndorCCD(object):
     def get_exposure_time(self):
         return self.get_acquisition_timings()[0]
     
+    def set_num_accumulations(self, num):
+        _err(andorlib.SetNumberAccumulations(num))
+        self.num_acc = num
+    
+    def get_num_accumulations(self):
+        return self.num_acc
+    
+    def set_num_kinetics(self, num):
+        _err(andorlib.SetNumberKinetics(num))
+        self.num_kin = num
+    
+    def get_num_kinetics(self):
+        return self.num_kin
+    
+    def set_accumulation_cycle_time(self, acc_time):
+        _err(andorlib.SetAccumulationCycleTime(acc_time))
+    
+    def set_kinetic_cycle_time(self, kin_time):
+        _err(andorlib.SetKineticCycleTime(c_float(kin_time)))
     
     ###### Electron Multiplication Mode (EM) ########
     def set_EM_advanced(self, state=True):
@@ -633,6 +692,57 @@ class AndorCCD(object):
         retval = andorlib.ShutDown()
         assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
     
+    def get_total_number_images_acquired(self):
+        num = c_long(0)
+        _err(andorlib.GetTotalNumberImagesAcquired(byref(num)))
+        return num.value
+    
+    def get_number_new_images(self):
+        """
+        This function will return information on the number of 
+        new images (i.e. images which have not yet been 
+        retrieved) in the circular buffer. This information can
+         be used with GetImages to retrieve a series of the
+        latest images. If any images are overwritten in
+         the circular buffer they can no longer be retrieved
+         and the information returned will treat overwritten images as having been retrieved.
+        """
+        first = c_long(0)
+        last = c_long(0)
+        _err(andorlib.GetNumberNewImages(byref(first),byref(last)))
+        return first.value, last.value
+    
+    def get_number_available_images(self):
+        first = c_long(0)
+        last = c_long(0)
+        _err(andorlib.GetNumberAvailableImages(byref(first),byref(last)))
+        return first.value, last.value
+    
+    def get_images(self,first,last, buf):
+        validfirst = c_long(0)
+        validlast = c_long(0)
+        
+        _err(andorlib.GetImages(c_long(first), c_long(last), 
+                                buf.ctypes.data_as(ctypes.POINTER(c_long)),
+                                c_uint(buf.size),
+                                byref(validfirst),byref(validlast)))
+        
+        return validfirst, validlast, buf
+
+    def get_oldest_image(self, arr=None):
+        if arr is None:
+            arr = np.zeros((self.Ny_ro, self.Nx_ro), dtype=np.int32)
+         
+        arr_ptr = arr.ctypes.data_as(ctypes.POINTER(c_long))
+        arr_size = c_uint(arr.size)
+        retval = andorlib.GetOldestImage(arr_ptr, arr_size)
+        #print("GetOldestImage", retval)
+        if retval == 20024: # DRV_NO_NEW_DATA
+            print("no new data")
+            return None
+        else:
+            _err(retval)
+        return arr
     
 if __name__ == '__main__':
     import time
