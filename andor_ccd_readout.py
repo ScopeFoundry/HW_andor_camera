@@ -8,6 +8,7 @@ from ScopeFoundry import Measurement
 from time import sleep
 
 from ScopeFoundry import h5_io
+from ScopeFoundry.helper_funcs import load_qt_ui_file, sibling_path
 
 ROW0 = 240
 ROW1 = 271
@@ -51,7 +52,42 @@ class AndorCCDReadoutMeasure(Measurement):
         self.acquire_bg  = self.add_logged_quantity('acquire_bg',  dtype=bool, initial=False, ro=False)
         self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
         
-
+        self.settings.New('calib_offset', unit='nm', initial=0)
+        self.settings.New('calib_focal_length', unit='mm', initial=300)
+        self.settings.New('calib_delta', unit='radian')
+        self.settings.New('calib_gamma', unit='radian')
+        self.settings.New('calib_grating_groves', unit='1/mm')
+        self.settings.New('calib_pixel_size', unit='um')
+        self.settings.New('calib_m_order', dtype=int)
+        
+        self.add_operation('run_acquire_bg', self.acquire_bg_start)
+        self.add_operation('run_acquire_single', self.acquire_single_start)
+        
+        
+    def pixel2wavelength(self, grating_position, pixel_index):
+        offset = self.settings['calib_offset'] # nm
+        focal_length = self.settings['calib_focal_length'] # mm
+        delta = self.settings['calib_delta'] # rad
+        gamma = self.settings['calib_gamma'] #rad
+        grating_spacing = 1./self.settings['calib_grating_groves']  #mm
+        pixel_size = self.settings['calib_pixel_size']*1e-3  #mm   #Binning!
+        m_order = self.settings['calib_m_order'] #diffraction order
+        
+        ccd_hw = self.app.hardware['andor_ccd']
+        binning_yx = ccd_hw.settings['ccd_shape']/ ccd_hw.settings['readout_shape']
+        binning = binning_yx[1]
+            
+        wl_center = (grating_position + offset)*1e-6
+        px_from_center = pixel_index*binning +binning/2. - 0.5*ccd_hw.settings['ccd_shape'][1]
+        
+        psi = np.arcsin(m_order* wl_center / (2*grating_spacing*np.cos(gamma/2)))
+        
+        eta = np.arctan(px_from_center*pixel_size*np.cos(delta) /
+        (focal_length+px_from_center*pixel_size*np.sin(delta)))
+        
+        return 1e6*((grating_spacing/m_order)
+                        *(np.sin(psi-0.5*gamma)
+                          + np.sin(psi+0.5*gamma+eta)))        
     
     def acquire_bg_start(self):
         self.acquire_bg.update_value(True)
@@ -67,7 +103,25 @@ class AndorCCDReadoutMeasure(Measurement):
         #    self.graph_layout.deleteLater() # see http://stackoverflow.com/questions/9899409/pyside-removing-a-widget-from-a-layout
         #    del self.graph_layout
             
-        self.ui = self.graph_layout = pg.GraphicsLayoutWidget(border=(100,100,100))
+        ui = self.ui = load_qt_ui_file(sibling_path(__file__, 'andor_ccd_readout.ui'))
+        
+        ## ui connection
+        andor = self.app.hardware['andor_ccd']
+        andor.settings.exposure_time.connect_to_widget(ui.andor_ccd_int_time_doubleSpinBox)
+        andor.settings.em_gain.connect_to_widget(ui.andor_ccd_emgain_doubleSpinBox)
+        andor.settings.temperature.connect_to_widget(ui.andor_ccd_temp_doubleSpinBox)
+        andor.settings.ccd_status.connect_to_widget(ui.andor_ccd_status_label)
+        andor.settings.shutter_open.connect_to_widget(ui.andor_ccd_shutter_open_checkBox)
+        
+        self.settings.bg_subtract.connect_to_widget(ui.andor_ccd_bgsub_checkBox)
+        ui.andor_ccd_acquire_cont_checkBox.stateChanged.connect(self.start_stop)
+        ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
+        ui.andor_ccd_read_single_pushButton.clicked.connect(self.acquire_single_start)
+
+
+        #### PLot window
+        self.graph_layout = pg.GraphicsLayoutWidget()
+        self.ui.plot_groupBox.layout().addWidget(self.graph_layout)
         
         self.spec_plot = self.graph_layout.addPlot()
         self.spec_plot_line = self.spec_plot.plot([1,3,2,4,3,5])
@@ -88,13 +142,15 @@ class AndorCCDReadoutMeasure(Measurement):
         self.hist_lut.autoHistogramRange()
         self.hist_lut.setImageItem(self.img_item)
         self.graph_layout.addItem(self.hist_lut)
+        
 
 
     def run(self):
     
         #setup data arrays         
         
-        ccd_dev = self.app.hardware['andor_ccd'].ccd_dev
+        ccd_hw = self.app.hardware['andor_ccd']
+        ccd_dev = ccd_hw.ccd_dev
         
         width_px = ccd_dev.Nx_ro
         height_px = ccd_dev.Ny_ro
@@ -110,15 +166,19 @@ class AndorCCDReadoutMeasure(Measurement):
         
             self.log.info( "checking..." )
             t0 = time.time()
+
+            if 'acton_spectrometer' in self.app.hardware and self.app.hardware['acton_spectrometer'].settings['connected']:
+                self.wls  = self.pixel2wavelength(
+                              self.app.hardware['acton_spectrometer'].settings['center_wl'], 
+                              np.arange(width_px))
+                              #, binning=ccd_dev.get_current_hbin())
+            else:
+                self.wls = np.arange(width_px)
+
             while not self.interrupt_measurement_called:
             
-                if 'acton_spec' in self.app.hardware:
-                    self.wls  = pixel2wavelength(self.gui.acton_spec_hc.center_wl.val, 
-                                  np.arange(width_px), binning=ccd_dev.get_current_hbin())
-                else:
-                    self.wls = np.arange(width_px)
-
                 stat = ccd_dev.get_status()
+                ccd_hw.settings.ccd_status.read_from_hardware()
                 if stat == 'IDLE':
                     # grab data
                     t1 = time.time()
@@ -127,10 +187,11 @@ class AndorCCDReadoutMeasure(Measurement):
                 
                 
                     self.buffer_ = ccd_dev.get_acquired_data()
-
+                    
+                    print('andor_ccd buffer', self.buffer_.shape, ccd_dev.buffer.shape)
                 
                     if self.bg_subtract.val and not self.acquire_bg.val:
-                        bg = self.gui.andor_ccd_hc.background
+                        bg = ccd_hw.background
                         if bg is not None:
                             if bg.shape == self.buffer_.shape:
                                 self.buffer_ = self.buffer_ - bg
@@ -149,6 +210,9 @@ class AndorCCDReadoutMeasure(Measurement):
                     
                 else:
                     #sleep(wait_time)
+                    print("GetTotalNumberImagesAcquired", ccd_dev.get_total_number_images_acquired())
+                    #print("get_number_new_images", ccd_dev.get_number_new_images())
+                    #print("get_number_available_images", ccd_dev.get_number_available_images())
                     sleep(0.01)
         except Exception as err:
             self.log.error( "{} error: {}".format(self.name, err))
@@ -161,12 +225,11 @@ class AndorCCDReadoutMeasure(Measurement):
             # Signal emission from other threads ok?
             #self.measurement_state_changed.emit(False)
         
-        
             if self.acquire_bg.val:
                 if self.interrupt_measurement_called:
-                    self.gui.andor_ccd_hc.background = None
+                    ccd_hw.background = None
                 else:
-                    self.gui.andor_ccd_hc.background = self.buffer_.copy()
+                    ccd_hw.background = self.buffer_.copy()
                 self.acquire_bg.update_value(False)    
         
             if self.read_single.val:
@@ -180,12 +243,12 @@ class AndorCCDReadoutMeasure(Measurement):
                          'wls': self.wls,
                             }               
                 
-                for lqname,lq in self.gui.logged_quantities.items():
+                for lqname,lq in self.app.settings.as_dict().items():
                     save_dict[lqname] = lq.val
-                for hc in self.gui.hardware_components.values():
-                    for lqname,lq in hc.logged_quantities.items():
-                        save_dict[hc.name + "_" + lqname] = lq.val
-                for lqname,lq in self.logged_quantities.items():
+                for hw in self.app.hardware.values():
+                    for lqname,lq in hw.settings.as_dict().items():
+                        save_dict[hw.name + "_" + lqname] = lq.val
+                for lqname,lq in self.settings.as_dict().items():
                     save_dict[self.name +"_"+ lqname] = lq.val
 
                 self.fname = "%i_%s.npz" % (time.time(), self.name)
@@ -202,13 +265,19 @@ class AndorCCDReadoutMeasure(Measurement):
                 self.measurement_interrupted.emit()
     
     def update_display(self):
-
-        self.img_item.setImage(self.buffer_.astype(np.float32).T, autoLevels=False)
-        self.hist_lut.imageChanged(autoLevel=True, autoRange=True)
-
-        self.spec_plot_line.setData(self.wls, self.spectra_data)
-
-
+        if hasattr(self, 'buffer_'):
+            print('update_display', self.buffer_.shape)
+            if len(self.buffer_.shape) == 2:
+                self.img_item.setImage(self.buffer_.astype(np.float32).T, autoLevels=False)
+                self.hist_lut.imageChanged(autoLevel=True, autoRange=True)
+         
+                self.spec_plot_line.setData(self.wls, self.spectra_data)
+            else: # kinetic
+                self.img_item.setImage(self.buffer_[:,:,:].sum(axis=0).astype(np.float32).T, autoLevels=False)
+                self.hist_lut.imageChanged(autoLevel=True, autoRange=True)
+         
+                self.spec_plot_line.setData(self.wls, self.buffer_[:,:,:].sum(axis=(0,1)))
+                  
 class AndorCCDStepAndGlue(Measurement):
 
     name = "andor_ccd_step_and_glue"
@@ -235,7 +304,9 @@ class AndorCCDStepAndGlue(Measurement):
     def _run(self):
 
         # Hardware
-        ccd = self.gui.andor_ccd_hc.ccd_dev
+        ccd_hw = self.app.hardware['andor_ccd']
+        ccd = ccd_hw.ccd_dev
+        
         if 'acton_spec' in self.app.hardware:
             acton_spec_hc = self.gui.acton_spec_hc
     
@@ -270,7 +341,7 @@ class AndorCCDStepAndGlue(Measurement):
                                                dtype=np.int32, compression='gzip')
         
         if self.bg_subtract.val:
-            bg = self.bg = self.gui.andor_ccd_hc.background
+            bg = self.bg = ccd_hw.background
             if bg is not None and bg.shape == ccd.buffer.shape:
                 h5m['andor_ccd_bg'] = self.bg
             else:
@@ -316,5 +387,5 @@ class AndorCCDStepAndGlue(Measurement):
         except Exception as err:
             self.log.error( "{} error: {}".format(self.name, err))
         finally:            
-            self.gui.andor_ccd_hc.interrupt_acquisition()
+            ccd_hw.interrupt_acquisition()
             self.h5_file.close()
