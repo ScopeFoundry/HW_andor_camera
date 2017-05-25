@@ -123,7 +123,7 @@ class AndorCCDHW(HardwareComponent):
         
         
     def connect(self):
-        if self.debug: self.log.debug( "Connecting to Andor EMCCD Counter" )
+        if self.debug: self.log.debug( "Connecting to Andor EMCCD " )
         
         # Open connection to hardware
         self.ccd_dev = AndorCCD(debug = self.debug)
