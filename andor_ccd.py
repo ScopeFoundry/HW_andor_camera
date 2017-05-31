@@ -36,7 +36,7 @@ class AndorCCDHW(HardwareComponent):
                                                 vmin=1, vmax=4096)
         
         self.acq_mode = self.add_logged_quantity('acq_mode', dtype=str, 
-                                 initial='single', choices=('single', 'accumulate', 'kinetic') )
+                                 initial='single', choices=('single', 'accumulate', 'kinetic', 'run_till_abort') )
         
         
         self.acc_time = self.add_logged_quantity('acc_time', dtype=float, unit='s', initial=0.1, si=True)
@@ -291,9 +291,12 @@ class AndorCCDHW(HardwareComponent):
     def interrupt_acquisition(self):
         '''If the camera status is not IDLE, calls abort_acquisition()
         '''
-        stat = self.ccd_dev.get_status()
+        #stat = self.ccd_dev.get_status()
+        stat = self.settings.ccd_status.read_from_hardware()
         if stat != 'IDLE':
             self.ccd_dev.abort_acquisition()
+        stat = self.settings.ccd_status.read_from_hardware()
+        
     
     def set_readout(self):
         """Sets ROI based on values in LoggedQuantities for the current readout mode
