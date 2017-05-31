@@ -738,7 +738,7 @@ class AndorCCD(object):
         retval = andorlib.GetOldestImage(arr_ptr, arr_size)
         #print("GetOldestImage", retval)
         if retval == 20024: # DRV_NO_NEW_DATA
-            print("no new data")
+            #print("no new data")
             return None
         else:
             _err(retval)
