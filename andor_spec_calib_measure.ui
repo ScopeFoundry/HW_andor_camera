@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>755</width>
+    <height>835</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1">
+   <property name="spacing">
+    <number>9</number>
+   </property>
+   <property name="leftMargin">
+    <number>9</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QGroupBox" name="controls_groupBox">
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Controls</string>
+     </property>
+     <property name="checkable">
+      <bool>false</bool>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0">
+      <item>
+       <widget class="QPushButton" name="start_pushButton">
+        <property name="text">
+         <string>Start</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="interrupt_pushButton">
+        <property name="text">
+         <string>Interrupt</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="sweep_wls_groupBox">
+        <property name="title">
+         <string>Wavelength Sweep</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="1" column="0">
+          <widget class="QDoubleSpinBox" name="sweep_wls_min_doubleSpinBox"/>
+         </item>
+         <item row="1" column="1">
+          <widget class="QDoubleSpinBox" name="sweep_wls_max_doubleSpinBox"/>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Stop</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QDoubleSpinBox" name="sweep_wls_step_doubleSpinBox"/>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Start</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QDoubleSpinBox" name="sweep_wls_num_doubleSpinBox"/>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Step</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>N</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox">
+        <property name="title">
+         <string>Spectrometer</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Center WL</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_8">
+           <property name="text">
+            <string>Entrance Slit</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QDoubleSpinBox" name="spec_center_wl_doubleSpinBox"/>
+         </item>
+         <item row="2" column="1">
+          <widget class="QDoubleSpinBox" name="spec_ent_slit_doubleSpinBox"/>
+         </item>
+         <item row="3" column="1">
+          <widget class="QComboBox" name="spec_grating_id_comboBox"/>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_9">
+           <property name="text">
+            <string>Grating</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0" colspan="2">
+          <widget class="Line" name="line">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="title">
+         <string>Andor Camera</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_10">
+           <property name="text">
+            <string>EM Gain</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QDoubleSpinBox" name="andor_emgain_doubleSpinBox"/>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Exp Time</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QDoubleSpinBox" name="andor_exp_time_doubleSpinBox"/>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="plot_widget" native="true">
+     <layout class="QVBoxLayout" name="verticalLayout"/>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
