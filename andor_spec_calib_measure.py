@@ -26,7 +26,6 @@ class AndorSpecCalibMeasure(Measurement):
         
         self.img_plot = self.graph_layout.addPlot()
         self.img_plot.showGrid(x=True, y=True)
-        self.img_plot.setAspectLocked(lock=True, ratio=1)
         self.img_item = pg.ImageItem()
         self.img_plot.addItem(self.img_item)
 
@@ -98,21 +97,21 @@ class AndorSpecCalibMeasure(Measurement):
             self.sweep_wls = self.settings.ranges['sweep_wls'].array
             self.h5m['sweep_wls'] = self.sweep_wls
             
+            self.spectra = np.zeros((len(self.sweep_wls), width_px), dtype=float)
             self.spectra_h5 = self.h5m.create_dataset('spectra', 
                                                       shape=(len(self.sweep_wls), width_px),
                                                       dtype=float)
             
-            
-            for ii, center_wl in self.sweep_wls:
+            for ii, center_wl in enumerate(self.sweep_wls):
                 if self.interrupt_measurement_called:
                     break
                 # move spectrometer to center wavelength
-                self.spec['center_wl'] = center_wl
+                self.spec.settings['center_wl'] = center_wl
                 
                 ccd_dev.start_acquisition()
     
                 stat = ccd_hw.settings.ccd_status.read_from_hardware()
-                while stat == 'ACQURING':
+                while stat == 'ACQUIRING':
                     if self.interrupt_measurement_called:
                         break
                     time.sleep(0.01)
@@ -121,14 +120,16 @@ class AndorSpecCalibMeasure(Measurement):
                 if stat == 'IDLE':
                     self.ccd_img = ccd_dev.get_acquired_data()
                     self.spectrum = np.average(self.ccd_img, axis=0)
+                    self.spectra[ii,:] = self.spectrum
                     self.spectra_h5[ii,:] = self.spectrum
 
         finally:
+            print(self.name, 'done')
             self.h5_file.close()
         
     def update_display(self):
-        self.img_item.setImage(self.spectra_h5.T)
-        self.spectrum_plot.setData(self.spectrum)
+        self.img_item.setImage(self.spectra.T)
+        self.current_spec_plotline.setData(self.spectrum)
         
 if __name__ == '__main__':
     import sys
