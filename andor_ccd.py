@@ -36,7 +36,11 @@ class AndorCCDHW(HardwareComponent):
                                                 vmin=1, vmax=4096)
         
         self.acq_mode = self.add_logged_quantity('acq_mode', dtype=str, 
+<<<<<<< HEAD
                                  initial='single', choices=('single', 'accumulate', 'kinetic', 'run_till_abort') )
+=======
+                                 initial='single', choices=('single', 'accumulate', 'kinetic') )
+>>>>>>> d23eddb51984f311015483594899062df7612379
         
         
         self.acc_time = self.add_logged_quantity('acc_time', dtype=float, unit='s', initial=0.1, si=True)

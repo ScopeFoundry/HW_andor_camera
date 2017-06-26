@@ -292,12 +292,19 @@ class AndorCCD(object):
     
     ##### Acquisition Modes #####
     def set_aq_mode(self, mode):
+<<<<<<< HEAD
         print('set_aq_mode', mode)
         assert mode in ('single', 'accumulate', 'kinetic', 'run_till_abort')
         if mode == 'single': return self.set_aq_single_scan()
         if mode == 'accumulate': return self.set_aq_accumulate_scan()
         if mode == 'kinetic': return self.set_aq_kinetic_scan()
         if mode == 'run_till_abort': return self.set_aq_run_till_abort_scan()
+=======
+        assert mode in ('single', 'accumulate', 'kinetic')
+        if mode == 'single': return self.set_aq_single_scan()
+        if mode == 'accumulate': return self.set_aq_accumulate_scan()
+        if mode == 'kinetic': return self.set_aq_kinetic_scan()
+>>>>>>> d23eddb51984f311015483594899062df7612379
         
     def get_aq_mode(self):
         return self.aq_mode
@@ -742,7 +749,11 @@ class AndorCCD(object):
         retval = andorlib.GetOldestImage(arr_ptr, arr_size)
         #print("GetOldestImage", retval)
         if retval == 20024: # DRV_NO_NEW_DATA
+<<<<<<< HEAD
             #print("no new data")
+=======
+            print("no new data")
+>>>>>>> d23eddb51984f311015483594899062df7612379
             return None
         else:
             _err(retval)

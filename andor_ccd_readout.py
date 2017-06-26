@@ -56,7 +56,11 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.New('calib_focal_length', unit='mm', initial=300)
         self.settings.New('calib_delta', unit='radian')
         self.settings.New('calib_gamma', unit='radian')
+<<<<<<< HEAD
         self.settings.New('calib_grating_groves', unit='1/mm',initial=150)
+=======
+        self.settings.New('calib_grating_groves', unit='1/mm')
+>>>>>>> d23eddb51984f311015483594899062df7612379
         self.settings.New('calib_pixel_size', unit='um')
         self.settings.New('calib_m_order', dtype=int)
         
