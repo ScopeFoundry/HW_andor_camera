@@ -1,3 +1,29 @@
-Andor Camera 
+ScopeFoundryHW.andor_camera
+===========================
 
-wraps SDK v2 for ScopeFoundry use
+Andor CCD Camera hardware plug-in for ScopeFoundry.
+
+This interface uses the SDK v2 DLL provided by Andor to communicate to the camera.
+
+
+It has been tested with PCI iXon and USB Newton cameras
+
+
+ScopeFoundry is a Python platform for controlling custom laboratory 
+experiments and visualizing scientific data
+
+<http://www.scopefoundry.org>
+
+This software is not made by or endorsed by Andor, Inc.
+
+
+Authors
+----------
+
+Edward S. Barnard <esbarnard@lbl.gov>
+
+
+Requirements
+------------
+
+    * ScopeFoundry
