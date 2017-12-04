@@ -175,3 +175,7 @@ AC_TRIGGERMODE_EXTERNALEXPOSURE = 32
 AC_TRIGGERMODE_INVERTED = 0x40
 AC_TRIGGERMODE_EXTERNAL_CHARGESHIFTING = 0x80
 
+consts_by_num = dict()
+for name,num in list(locals().items()):
+    if name.startswith("DRV_") or name.startswith('AC_'):
+        consts_by_num[num] = name
