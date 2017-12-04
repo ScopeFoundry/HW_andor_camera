@@ -117,7 +117,11 @@ class AndorCCDReadoutMeasure(Measurement):
         ui.andor_ccd_acquire_cont_checkBox.stateChanged.connect(self.start_stop)
         ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
         ui.andor_ccd_read_single_pushButton.clicked.connect(self.acquire_single_start)
-
+        
+        andor.settings.temp_status.connect_to_widget(self.ui.temp_status_label)
+        andor.settings.temp_setpoint.connect_to_widget(self.ui.temp_setpoint_doubleSpinBox)
+        
+        andor.settings.connected.connect_to_widget(self.ui.hw_connect_checkBox)
 
         #### PLot window
         self.graph_layout = pg.GraphicsLayoutWidget()
@@ -210,9 +214,12 @@ class AndorCCDReadoutMeasure(Measurement):
                     
                 else:
                     #sleep(wait_time)
-                    print("GetTotalNumberImagesAcquired", ccd_dev.get_total_number_images_acquired())
+                    #print("GetTotalNumberImagesAcquired", ccd_dev.get_total_number_images_acquired())
                     #print("get_number_new_images", ccd_dev.get_number_new_images())
                     #print("get_number_available_images", ccd_dev.get_number_available_images())
+                    ccd_hw.settings.temperature.read_from_hardware()
+                    ccd_hw.settings.temp_status.read_from_hardware()
+                    
                     sleep(0.01)
         #except Exception as err:
         #    self.log.error( "{} error: {}".format(self.name, err))
@@ -266,7 +273,7 @@ class AndorCCDReadoutMeasure(Measurement):
     
     def update_display(self):
         if hasattr(self, 'buffer_'):
-            print('update_display', self.buffer_.shape)
+            #print('update_display', self.buffer_.shape)
             if len(self.buffer_.shape) == 2:
                 self.img_item.setImage(self.buffer_.astype(np.float32).T, autoLevels=False)
                 self.hist_lut.imageChanged(autoLevel=True, autoRange=True)

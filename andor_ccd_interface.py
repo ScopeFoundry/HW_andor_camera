@@ -53,89 +53,130 @@ def _err(retval):
 
 class AndorCCD(object):
     
-    def __init__(self, debug = False):
+    def __init__(self, debug = False, initialize_to_defaults=True):
     
         self.debug = debug
         
         if self.debug:  logger.debug("AndorCCD initializing")
             
-        retval = andorlib.Initialize("") 
+        _err(andorlib.Initialize(""))
+        if self.debug: logger.debug("Andor CCD Library Initialization Successful")
         
-        if retval != consts.DRV_SUCCESS:
-            raise IOError( "Andor CCD: Initialization failed %i" % retval)
-        else :
-            if self.debug: logger.debug("Andor CCD Initialization Successful")
+        self.get_head_model()
         
-        headModel = ctypes.create_string_buffer(consts.MAX_PATH)
-        if andorlib.GetHeadModel(headModel) != consts.DRV_SUCCESS :
-            raise IOError( "Andor CCD: Error Getting head model")
-        else:
-            self.headModel = str(headModel.raw).strip('\x00')
-            if self.debug: logger.debug("Head model: "+ repr(self.headModel))
+        self.get_serial_number()
+        
+        self.get_hardware_version()
+        
+        self.get_software_version()
+        
+        self.get_detector_shape()
+            
+        self.get_num_ad_channels()
+        self.get_num_output_amplifiers()
 
+        
+        if initialize_to_defaults:
+            self.set_ad_channel() #set default AD channel
+            self.set_aq_single_scan() # set to single scan by default
+            self.set_num_accumulations(1)
+            self.set_num_kinetics(1)
+        
+        #shift speeds
+        self.read_shift_speeds()
+        if initialize_to_defaults:
+            self.set_hs_speed_em()
+            self.set_hs_speed_conventional()
+            self.set_vs_speed()
+
+        # gains
+        self.get_preamp_gains()
+        if initialize_to_defaults:
+            self.set_preamp_gain()
+
+
+        # EM gain
+        self.em_mode = self.has_em_ccd()
+        if self.em_mode:
+            self.get_EM_gain_range()
+            self.get_EMCCD_gain()
+
+        # temperature        
+        self.get_temperature_range()
+        self.get_temperature()
+
+        if initialize_to_defaults:
+            self.set_temperature(DEFAULT_TEMPERATURE)
+            self.set_cooler_on()
+        
+            # Initialize the camera
+            self.set_shutter_open(False)             # Shutter closed
+            self.set_output_amp(DEFAULT_OUTPUT_AMP)  # Default output amplifier
+            
+            if self.em_mode:
+                self.set_EMCCD_gain(DEFAULT_EM_GAIN)     # Default EM Gain
+        
+    
+    ##### Initialization Functions
+    
+    def get_head_model(self):
+        headModel = ctypes.create_string_buffer(consts.MAX_PATH)
+        _err(andorlib.GetHeadModel(headModel))
+        self.headModel = str(headModel.raw).strip('\x00')
+        if self.debug: logger.debug("Head model: "+ repr(self.headModel))
+        return self.headModel
+
+    def get_serial_number(self):
         serialNumber = c_int(-1)
-        retval = andorlib.GetCameraSerialNumber(byref(serialNumber)) 
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        _err(andorlib.GetCameraSerialNumber(byref(serialNumber))) 
         self.serialNumber = serialNumber.value
         if self.debug: logger.debug('Serial Number: %g' % self.serialNumber)
-
+        return serialNumber
+    
+    def get_hardware_version(self):
         HW = [ c_int(i) for i in range(6) ] 
-        retval = andorlib.GetHardwareVersion( *[ byref(h) for h in HW ] )
-        if retval != consts.DRV_SUCCESS :
-            raise IOError( "Andor CCD: Error Getting Hardware Version.")
-        else: 
-            self.hardware_version = tuple([ h.value for h in HW])
-            if self.debug: logger.debug('Hardware information: {}'.format( repr(self.hardware_version)))
-
+        _err(andorlib.GetHardwareVersion( *[ byref(h) for h in HW ] ))
+        self.hardware_version = tuple([ h.value for h in HW])
+        if self.debug: logger.debug('Hardware information: {}'.format( repr(self.hardware_version)))
+        return self.hardware_version
+    
+    def get_software_version(self):
         SW = [ c_int(i) for i in range(6) ] 
-        retval = andorlib.GetSoftwareVersion( *[byref(s) for s in SW] )
-        if retval != consts.DRV_SUCCESS :
-            raise IOError( "Andor CCD: Error Getting Software Version.")
-        else: 
-            self.software_version = tuple([ s.value for s in SW ])
-            if self.debug: logger.debug('Software information: %s' % repr(self.software_version))
-            
-            
+        _err(andorlib.GetSoftwareVersion( *[byref(s) for s in SW] ))
+        self.software_version = tuple([ s.value for s in SW ])
+        if self.debug: logger.debug('Software information: %s' % repr(self.software_version))
+        return self.software_version
+    
+    def get_detector_shape(self):
+        """ returns number of pixels Nx, Ny"""
         pixelsX = c_int(1)
         pixelsY = c_int(1)
         
-        retval = andorlib.GetDetector(byref(pixelsX), byref(pixelsY))
-        if retval != consts.DRV_SUCCESS :
-            raise IOError( "Andor CCD: Couldn't get dimensions.")
-        else :
-            self.Nx = pixelsX.value
-            self.Ny = pixelsY.value
-            if self.debug: logger.debug("Dimensions: {} {}".format( self.Nx, self.Ny ))
-            
-        
+        _err(andorlib.GetDetector(byref(pixelsX), byref(pixelsY)))
+        self.Nx = pixelsX.value
+        self.Ny = pixelsY.value
+        if self.debug: logger.debug("Dimensions: {} {}".format( self.Nx, self.Ny ))
+        return self.Nx, self.Ny
+    
+    def get_num_ad_channels(self):
         numADChan = c_int(-1)
         retval = andorlib.GetNumberADChannels(byref(numADChan)) 
         assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval    
         self.numADChan = numADChan.value
-        if debug: logger.debug( '# of AD channels [expecting one]: %g' % self.numADChan )
-        
-        self.set_ad_channel() #set default AD channel
-        
+        if self.debug: logger.debug( '# of AD channels [expecting one]: %g' % self.numADChan )
+        return self.numADChan
+    
+    def get_num_output_amplifiers(self):
         ampNum = c_int(-1)
         retval = andorlib.GetNumberAmp(byref(ampNum))
         assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
         self.ampNum = ampNum.value
-        if debug: logger.debug( 'Number of output amplifiers: %g' % self.ampNum ) 
-        
-        self.set_aq_single_scan() # set to single scan by default
-        self.set_num_accumulations(1)
-        self.set_num_kinetics(1)
-        
-        #shift speeds
-        self.read_shift_speeds()
-        self.set_hs_speed_em()
-        self.set_hs_speed_conventional()
-        self.set_vs_speed()
-
-        # gains
+        if self.debug: logger.debug( 'Number of output amplifiers: %g' % self.ampNum ) 
+        return self.ampNum
+    
+    def get_preamp_gains(self):
         numGains = c_int(-1)
-        retval = andorlib.GetNumberPreAmpGains(pointer(numGains))
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        _err(andorlib.GetNumberPreAmpGains(pointer(numGains)))
         if self.debug: logger.debug('# of gains: %g '% numGains.value)
         self.numGains = numGains.value
         self.preamp_gains = []
@@ -144,33 +185,22 @@ class AndorCCD(object):
             _err(andorlib.GetPreAmpGain(i, byref(gain)))
             self.preamp_gains.append(gain.value)
         if self.debug: logger.debug('Preamp gains available: %s' % self.preamp_gains)
-
-        self.set_preamp_gain()
+        return self.preamp_gains
         
+    def has_em_ccd(self):
+        gain = c_int(-1)
+        retval = andorlib.GetEMCCDGain(byref(gain))
+        print(retval)
+        return False
 
-        # EM gain
-        self.get_EM_gain_range()
-        self.get_EMCCD_gain()
-
-        # temperature        
-        self.get_temperature_range()
-        self.get_temperature()
-
-        self.set_temperature(DEFAULT_TEMPERATURE)
-        self.set_cooler_on()
-        
-        # Initialize the camera
-        self.set_shutter_open(False)             # Shutter closed
-        self.set_output_amp(DEFAULT_OUTPUT_AMP)  # Default output amplifier
-        self.set_EMCCD_gain(DEFAULT_EM_GAIN)     # Default EM Gain
-        
-        
+    
+    
+    
     #####    
     
     def set_ad_channel(self,chan_i=0):
         assert chan_i in range(0,self.numADChan)
-        retval = andorlib.SetADChannel(int(chan_i))
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        _err(andorlib.SetADChannel(int(chan_i)))
         self.ad_chan = chan_i
         return self.ad_chan
     
@@ -212,17 +242,13 @@ class AndorCCD(object):
         
     def set_ro_single_track(self, center, width = 1, hbin = 1):
         self.ro_mode = 'SINGLE_TRACK'
-        retval = andorlib.SetReadMode(3)
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
-        
-        retval =  andorlib.SetSingleTrack(c_int(center), c_int(width)) 
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        _err(andorlib.SetReadMode(3))
+        _err(andorlib.SetSingleTrack(c_int(center), c_int(width)) )
         #self.outputHeight = ?
         #not tested...
     
-        retval =  andorlib.SetSingleTrackHBin(c_int(hbin)) 
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
-        
+        _err(andorlib.SetSingleTrackHBin(c_int(hbin)))
+                
         self.ro_st_hbin = hbin
         self.Nx_ro = int(self.Nx/hbin)              
         self.Ny_ro = 1
@@ -437,6 +463,7 @@ class AndorCCD(object):
         _err(andorlib.SetHSSpeed(0, speed_index)) # 0 = default speed (fastest), #arg0 -> EM mode = 0
 
     def set_hs_speed_conventional(self,speed_index=0):
+        print("set_hs_speed_conventional", speed_index, self.ad_chan)
         assert 0 <= speed_index < self.numHSSpeeds_Conventional[self.ad_chan]
         _err(andorlib.SetHSSpeed(1, speed_index)) # 0 = default speed (fastest), #arg0 -> conventional = 1
 
@@ -538,11 +565,25 @@ class AndorCCD(object):
         retval = andorlib.GetTemperature(byref(lastTemp))
         if retval == consts.DRV_ACQUIRING:
             raise IOError( "Camera busy acquiring" )
-        else:
+        elif retval in (consts.DRV_NOT_INITIALIZED, consts.DRV_ERROR_ACK):
             _err(retval)
-        self.temperature = lastTemp.value
-        self.temperature_status = retval
-        return self.temperature
+        else:
+            self.temperature = lastTemp.value
+            self.temperature_status_num = retval
+            return self.temperature
+
+    temp_status_dict = {
+        consts.DRV_TEMP_OFF: 'OFF',        
+        consts.DRV_TEMP_NOT_STABILIZED: 'NOT_STABILIZED',        
+        consts.DRV_TEMP_STABILIZED: 'STABILIZED',
+        consts.DRV_TEMP_NOT_REACHED: 'NOT_REACHED',
+        consts.DRV_TEMP_NOT_SUPPORTED: 'NOT_SUPPORTED',
+        consts.DRV_TEMP_DRIFT: 'DRIFT',
+        }
+
+    def get_temperature_status(self):
+        self.get_temperature()
+        return self.temp_status_dict[self.temperature_status_num]
 
     """
     @property
@@ -634,14 +675,14 @@ class AndorCCD(object):
         return self.num_kin
     
     def set_accumulation_cycle_time(self, acc_time):
-        _err(andorlib.SetAccumulationCycleTime(acc_time))
+        _err(andorlib.SetAccumulationCycleTime(c_float(acc_time)))
     
     def set_kinetic_cycle_time(self, kin_time):
         _err(andorlib.SetKineticCycleTime(c_float(kin_time)))
     
     ###### Electron Multiplication Mode (EM) ########
     def set_EM_advanced(self, state=True):
-        _err(andorlib.GetEMGainRange(c_int(state)))
+        _err(andorlib.SetEMGainRange(c_int(state)))
         
     def get_EM_gain_range(self):
         low, high = c_int(-1), c_int(-1)
