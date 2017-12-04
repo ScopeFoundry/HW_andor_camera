@@ -5,8 +5,6 @@ from ScopeFoundry.helper_funcs import sibling_path, load_qt_ui_file,\
 import pyqtgraph as pg
 import numpy as np
 import time
-from tables.tests.create_backcompat_indexes import h5file
-from astropy.wcs.docstrings import spec
 
 class AndorSpecCalibMeasure(Measurement):
     
