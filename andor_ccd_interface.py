@@ -24,15 +24,15 @@ if platform.architecture()[0] == '64bit':
 else:
     andorlibpath = str(os.path.join(os.path.dirname(__file__),"atmcd32d.dll"))
 #print andorlibpath
-
-
-
+ 
+ 
+ 
 andorlib = windll.LoadLibrary(andorlibpath)
 
 
 DEFAULT_TEMPERATURE = -80
 DEFAULT_EM_GAIN = 10
-DEFAULT_OUTPUT_AMP = 0  # 0 is electron multitplication, 1 is conventional    
+DEFAULT_OUTPUT_AMP = 0  # 0 is electron multiplication, 1 is conventional    
 
 
 # Read modes for the EMCCD:
@@ -42,6 +42,7 @@ class AndorReadMode(Enum):
     RandomTrack = 2
     SingleTrack = 3
     Image = 4
+    
 
 def _err(retval):
     if retval == consts.DRV_SUCCESS:
@@ -122,7 +123,7 @@ class AndorCCD(object):
     def get_head_model(self):
         headModel = ctypes.create_string_buffer(consts.MAX_PATH)
         _err(andorlib.GetHeadModel(headModel))
-        self.headModel = str(headModel.raw).strip('\x00')
+        self.headModel = headModel.raw.decode().strip('\x00')
         if self.debug: logger.debug("Head model: "+ repr(self.headModel))
         return self.headModel
 
@@ -131,7 +132,7 @@ class AndorCCD(object):
         _err(andorlib.GetCameraSerialNumber(byref(serialNumber))) 
         self.serialNumber = serialNumber.value
         if self.debug: logger.debug('Serial Number: %g' % self.serialNumber)
-        return serialNumber
+        return serialNumber.value
     
     def get_hardware_version(self):
         HW = [ c_int(i) for i in range(6) ] 
@@ -190,7 +191,8 @@ class AndorCCD(object):
     def has_em_ccd(self):
         gain = c_int(-1)
         retval = andorlib.GetEMCCDGain(byref(gain))
-        print(retval)
+        if retval == consts.DRV_SUCCESS:
+            return True
         return False
 
     
@@ -228,13 +230,26 @@ class AndorCCD(object):
         elif (ro_mode == AndorReadMode.SingleTrack):
             self.set_ro_single_track(256, 20)
     
+    def set_read_mode_by_name(self,name):
+        read_mode_dict = dict(
+            FullVerticalBinning = 0,
+            MultiTrack = 1,
+            RandomTrack = 2,
+            SingleTrack = 3,
+            Image = 4)
+        
+        readout_mode_id = read_mode_dict[name]
+        self.set_readmode(readout_mode_id)
+        
+            
+    def set_read_mode(self, mode_id):
+        _err(andorlib.SetReadMode(mode_id))
+    
     def set_ro_full_vertical_binning(self, hbin=1):
         self.ro_mode = 'FULL_VERTICAL_BINNING'
-        retval = andorlib.SetReadMode(0) # sets to FVB
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        _err(andorlib.SetReadMode(0)) # sets to FVB
         self.ro_fvb_hbin = hbin
-        retval = andorlib.SetFVBHBin(self.ro_fvb_hbin)
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        _err(andorlib.SetFVBHBin(self.ro_fvb_hbin))
         #self.outputHeight = 1
         self.Nx_ro = int(self.Nx/hbin)              
         self.Ny_ro = 1
@@ -244,8 +259,6 @@ class AndorCCD(object):
         self.ro_mode = 'SINGLE_TRACK'
         _err(andorlib.SetReadMode(3))
         _err(andorlib.SetSingleTrack(c_int(center), c_int(width)) )
-        #self.outputHeight = ?
-        #not tested...
     
         _err(andorlib.SetSingleTrackHBin(c_int(hbin)))
                 
@@ -273,8 +286,7 @@ class AndorCCD(object):
     
     def set_ro_image_mode(self,hbin=1,vbin=1,hstart=1,hend=None,vstart=1,vend=None):
         self.ro_mode = 'IMG'
-        retval = andorlib.SetReadMode(4)
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+        _err(andorlib.SetReadMode(4))
         
         if hend is None:
             hend = self.Nx
@@ -293,10 +305,9 @@ class AndorCCD(object):
         self.vstart = vstart
         self.vend   = vend
         
-        retval = andorlib.SetImage(c_int(hbin),   c_int(vbin), 
+        _err(andorlib.SetImage(c_int(hbin),   c_int(vbin), 
                           c_int(hstart), c_int(hend),
-                          c_int(vstart), c_int(vend) )
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+                          c_int(vstart), c_int(vend) ))
         
         self.Nx_ro = int((self.hend-self.hstart+1)/self.hbin)                
         self.Ny_ro = int((self.vend-self.vstart+1)/self.vbin)

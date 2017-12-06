@@ -27,7 +27,7 @@ class AndorCCDHW(HardwareComponent):
         self.settings.New('temp_setpoint', dtype=int, unit="C", vmin = -300, vmax = 300, si=False)
         self.settings.New('temp_status', dtype=str, ro=True)
         
-        self.cooler_on = self.add_logged_quantity(name="cooler_on", dtype=bool, ro=False)
+        self.cooler_on = self.add_logged_quantity(name="cooler_on", dtype=bool, ro=False, initial=True)
 
         self.exposure_time = self.add_logged_quantity(name="exposure_time", 
                                                       dtype=float,spinbox_decimals=4,
@@ -80,11 +80,10 @@ class AndorCCDHW(HardwareComponent):
                                                      )
         
         # Readout mode
-        self.readout_mode = self.add_logged_quantity(name="readout_mode", dtype=int, ro=False,
-                                                     initial = 0,
-                                                     choices=[('',0)],
-                                                              )
-        
+        self.readout_mode = self.add_logged_quantity(name="readout_mode", dtype=str, ro=False,
+                                                     initial = 'Image',
+                                                     choices = ("Image", "FullVerticalBinning", "SingleTrack",)
+                                                     )        
         # ROI Parameters for image readout mode.
         self.roi_img_hstart = self.add_logged_quantity("roi_img_hstart", dtype=int, unit='px', 
                                                         ro=False, initial=1)
@@ -213,12 +212,6 @@ class AndorCCDHW(HardwareComponent):
         self.roi_st_hbin.change_min_max(1, width)
         self.roi_st_width.change_min_max(1, height)
         
-        #Choices for Readout mode
-        choices = [("FullVerticalBinning", AndorReadMode.FullVerticalBinning.value),
-                      ("SingleTrack", AndorReadMode.SingleTrack.value),
-                      ("Image", AndorReadMode.Image.value)
-                    ]
-        self.readout_mode.change_choice_list(choices)
         
         
         # Choices for the horizontal shift speeds in EMCCD mode
@@ -359,9 +352,9 @@ class AndorCCDHW(HardwareComponent):
         
         ro_mode = self.readout_mode.val
         #ro_mode = self.ccd_dev.get_ro_mode # FIXME
-        if ro_mode ==  AndorReadMode.FullVerticalBinning.value:
-            self.ccd_dev.set_ro_full_vertical_binning(self.roi_fvb_hbin.val) #FIXME
-        elif ro_mode ==  AndorReadMode.Image.value:
+        if ro_mode ==  'FullVerticalBinning':
+            self.ccd_dev.set_ro_full_vertical_binning(self.roi_fvb_hbin.val)
+        elif ro_mode ==  'Image':
             self.ccd_dev.set_ro_image_mode(
                                              self.roi_img_hbin.val,
                                              self.roi_img_vbin.val, 
@@ -369,7 +362,7 @@ class AndorCCDHW(HardwareComponent):
                                              self.roi_img_hend.val,
                                              self.roi_img_vstart.val,
                                              self.roi_img_vend.val)
-        elif ro_mode ==  AndorReadMode.SingleTrack.value:
+        elif ro_mode ==  'SingleTrack':
             self.ccd_dev.set_ro_single_track(self.roi_st_center.val, self.roi_st_width.val, self.roi_st_hbin.val)
         else:
             raise NotImplementedError("ro mode not implemented %s", ro_mode)

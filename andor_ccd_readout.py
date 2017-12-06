@@ -217,10 +217,12 @@ class AndorCCDReadoutMeasure(Measurement):
                     #print("GetTotalNumberImagesAcquired", ccd_dev.get_total_number_images_acquired())
                     #print("get_number_new_images", ccd_dev.get_number_new_images())
                     #print("get_number_available_images", ccd_dev.get_number_available_images())
-                    ccd_hw.settings.temperature.read_from_hardware()
-                    ccd_hw.settings.temp_status.read_from_hardware()
-                    
                     sleep(0.01)
+                    try:
+                        ccd_hw.settings.temperature.read_from_hardware()
+                        ccd_hw.settings.temp_status.read_from_hardware()
+                    except Exception as err:
+                        pass # sometimes temperature can't be read during acquisition
         #except Exception as err:
         #    self.log.error( "{} error: {}".format(self.name, err))
         finally:            
@@ -263,7 +265,11 @@ class AndorCCDReadoutMeasure(Measurement):
                 self.log.info( "saved: " + self.fname)
                 
                 self.log.info( "Andor CCD single acq successfully acquired")
-                self.read_single.update_value(False)    
+                self.read_single.update_value(False)
+                
+                ccd_hw.settings.temperature.read_from_hardware()
+                ccd_hw.settings.temp_status.read_from_hardware()
+
 
             # Send completion signals
             if not self.interrupt_measurement_called:
