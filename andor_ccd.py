@@ -382,7 +382,7 @@ class AndorCCDHW(HardwareComponent):
         width, height = self.ccd_dev.get_detector_shape()        
         
         # Readout and ROI parameters
-        self.readout_mode.update_value(AndorReadMode.Image.value)  #Full image readout mode
+        self.readout_mode.update_value('Image')  #Full image readout mode
         self.roi_img_hstart.update_value(1)
         self.roi_img_hend.update_value(width)
         self.roi_img_hbin.update_value(1)

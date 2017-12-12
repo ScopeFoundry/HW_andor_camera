@@ -52,13 +52,9 @@ class AndorCCDReadoutMeasure(Measurement):
         self.acquire_bg  = self.add_logged_quantity('acquire_bg',  dtype=bool, initial=False, ro=False)
         self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
         
-        self.settings.New('calib_offset', unit='nm', initial=0)
-        self.settings.New('calib_focal_length', unit='mm', initial=300)
-        self.settings.New('calib_delta', unit='radian', initial=0)
-        self.settings.New('calib_gamma', unit='radian', initial=0)
-        self.settings.New('calib_grating_groves', unit='1/mm',initial=150)
-        self.settings.New('calib_pixel_size', unit='um', initial=16)
-        self.settings.New('calib_m_order', dtype=int, initial=1)
+        self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer'))
+
+        
         
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
         self.add_operation('run_acquire_single', self.acquire_single_start)
@@ -122,6 +118,9 @@ class AndorCCDReadoutMeasure(Measurement):
         andor.settings.temp_setpoint.connect_to_widget(self.ui.temp_setpoint_doubleSpinBox)
         
         andor.settings.connected.connect_to_widget(self.ui.hw_connect_checkBox)
+        
+        self.settings.wl_calib.connect_to_widget(self.ui.wl_calib_comboBox)
+
 
         #### PLot window
         self.graph_layout = pg.GraphicsLayoutWidget()
@@ -178,6 +177,22 @@ class AndorCCDReadoutMeasure(Measurement):
                               #, binning=ccd_dev.get_current_hbin())
             else:
                 self.wls = np.arange(width_px)
+
+            wl_calib = self.settings['wl_calib']
+            hbin = ccd_dev.get_current_hbin()
+            if wl_calib=='acton_spectrometer':
+                px_index = np.arange(width_px)
+                spec_hw = self.app.hardware['acton_spectrometer']
+                self.wls = spec_hw.get_wl_calibration(px_index, hbin)
+            elif wl_calib=='pixels':
+                binning = hbin
+                px_index = np.arange(width_px)
+                self.wls = binned_px = binning*px_index + 0.5*(binning-1)
+            elif wl_calib=='raw_pixels':
+                self.wls = np.arange(width_px)
+            else:
+                self.wls = np.arange(width_px)
+
 
             while not self.interrupt_measurement_called:
             
