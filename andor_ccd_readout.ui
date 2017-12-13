@@ -20,81 +20,6 @@
       <string>Andor CCD</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="5" column="5">
-       <widget class="QComboBox" name="wl_calib_comboBox"/>
-      </item>
-      <item row="0" column="0" colspan="2">
-       <widget class="QCheckBox" name="hw_connect_checkBox">
-        <property name="text">
-         <string>Hardware Connect</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="3">
-       <widget class="QCheckBox" name="andor_ccd_bgsub_checkBox">
-        <property name="text">
-         <string>BG Substract</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QLabel" name="andor_ccd_status_label">
-        <property name="text">
-         <string>STATUS</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QDoubleSpinBox" name="andor_ccd_emgain_doubleSpinBox">
-        <property name="keyboardTracking">
-         <bool>false</bool>
-        </property>
-        <property name="decimals">
-         <number>0</number>
-        </property>
-        <property name="maximum">
-         <double>4096.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>1.000000000000000</double>
-        </property>
-        <property name="value">
-         <double>100.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Exposure Time (s)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QPushButton" name="andor_ccd_acq_bg_pushButton">
-        <property name="text">
-         <string>Acq Background</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_22">
-        <property name="text">
-         <string>Temperature</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="3">
-       <widget class="QCheckBox" name="andor_ccd_acquire_cont_checkBox">
-        <property name="text">
-         <string>Acquire 
-Continuously</string>
-        </property>
-       </widget>
-      </item>
       <item row="1" column="1">
        <widget class="QDoubleSpinBox" name="andor_ccd_int_time_doubleSpinBox">
         <property name="keyboardTracking">
@@ -117,17 +42,20 @@ Continuously</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_21">
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="temp_setpoint_doubleSpinBox"/>
+      </item>
+      <item row="5" column="0">
+       <widget class="QPushButton" name="andor_ccd_acq_bg_pushButton">
         <property name="text">
-         <string>EM Gain</string>
+         <string>Acq Background</string>
         </property>
        </widget>
       </item>
-      <item row="5" column="1">
-       <widget class="QPushButton" name="andor_ccd_abort_bg_pushButton">
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_22">
         <property name="text">
-         <string>Abort BG</string>
+         <string>Temperature</string>
         </property>
        </widget>
       </item>
@@ -141,10 +69,35 @@ Continuously</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
-       <widget class="QPushButton" name="andor_ccd_read_single_pushButton">
+      <item row="1" column="3">
+       <widget class="QLabel" name="andor_ccd_status_label">
         <property name="text">
-         <string>read single</string>
+         <string>STATUS</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="3">
+       <widget class="QCheckBox" name="andor_ccd_bgsub_checkBox">
+        <property name="text">
+         <string>BG Substract</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Exposure Time (s)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="3">
+       <widget class="QCheckBox" name="andor_ccd_acquire_cont_checkBox">
+        <property name="text">
+         <string>Acquire 
+Continuously</string>
         </property>
        </widget>
       </item>
@@ -176,8 +129,27 @@ Continuously</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
-       <widget class="QDoubleSpinBox" name="temp_setpoint_doubleSpinBox"/>
+      <item row="5" column="4">
+       <widget class="QComboBox" name="wl_calib_comboBox"/>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="andor_ccd_emgain_doubleSpinBox">
+        <property name="keyboardTracking">
+         <bool>false</bool>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <double>4096.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>100.000000000000000</double>
+        </property>
+       </widget>
       </item>
       <item row="3" column="3">
        <widget class="QLabel" name="temp_status_label">
@@ -189,17 +161,38 @@ Continuously</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="4">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
+      <item row="0" column="0" colspan="2">
+       <widget class="QCheckBox" name="hw_connect_checkBox">
+        <property name="text">
+         <string>Hardware Connect</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="5">
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_21">
+        <property name="text">
+         <string>EM Gain</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QPushButton" name="andor_ccd_abort_bg_pushButton">
+        <property name="text">
+         <string>Abort BG</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QPushButton" name="andor_ccd_read_single_pushButton">
+        <property name="text">
+         <string>read single</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="4">
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>H Axis</string>
+         <string>Horizontal Axis</string>
         </property>
        </widget>
       </item>

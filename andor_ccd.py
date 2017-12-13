@@ -19,13 +19,13 @@ class AndorCCDHW(HardwareComponent):
         self.background = None
         
         # Create logged quantities
-        self.status = self.add_logged_quantity(name='ccd_status', dtype=str, fmt="%s",ro=True)
+        self.status = self.add_logged_quantity(name='ccd_status', dtype=str, initial="?", fmt="%s",ro=True)
         
         self.temperature = self.add_logged_quantity(name="temperature", dtype=int,
                                                     ro=True, unit = "C", vmin = -300, vmax = 300, si=False)
         
         self.settings.New('temp_setpoint', dtype=int, unit="C", vmin = -300, vmax = 300, si=False)
-        self.settings.New('temp_status', dtype=str, ro=True)
+        self.settings.New('temp_status', dtype=str, ro=True, initial="?",)
         
         self.cooler_on = self.add_logged_quantity(name="cooler_on", dtype=bool, ro=False, initial=True)
 
