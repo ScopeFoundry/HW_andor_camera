@@ -120,6 +120,8 @@ class AndorCCDReadoutMeasure(Measurement):
         andor.settings.temp_status.connect_to_widget(self.ui.temp_status_label)
         andor.settings.temp_setpoint.connect_to_widget(self.ui.temp_setpoint_doubleSpinBox)
         
+        self.settings.save_h5.connect_to_widget(self.ui.save_h5_checkBox)
+        
         andor.settings.connected.connect_to_widget(self.ui.hw_connect_checkBox)
         
         self.settings.wl_calib.connect_to_widget(self.ui.wl_calib_comboBox)
@@ -199,16 +201,15 @@ class AndorCCDReadoutMeasure(Measurement):
 
             while not self.interrupt_measurement_called:
             
-                stat = ccd_dev.get_status()
-                ccd_hw.settings.ccd_status.read_from_hardware()
+                stat = ccd_hw.settings.ccd_status.read_from_hardware()
                 if stat == 'IDLE':
                     # grab data
                     t1 = time.time()
                     #print "acq time", (t1-t0)
                     t0 = t1
                 
-                    self.buffer_ = ccd_dev.get_acquired_data()
-                    
+                    self.buffer_ = ccd_hw.get_acquired_data()
+                                        
                     #print('andor_ccd buffer', self.buffer_.shape, ccd_dev.buffer.shape)
                 
                     if self.bg_subtract.val and not self.acquire_bg.val:
@@ -273,7 +274,7 @@ class AndorCCDReadoutMeasure(Measurement):
                 
                     #create h5 data arrays
                     H['wls'] = self.wls
-                    H['spectrum'] = self.data
+                    H['spectrum'] = self.spectrum
                 
                     self.h5_file.close()
 
