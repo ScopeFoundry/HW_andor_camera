@@ -212,11 +212,13 @@ class AndorCCD(object):
     
     
     def create_buffer(self):
-        if self.aq_mode in ('single', 'accumulate'):
+        if self.aq_mode in ('single', 'accumulate', 'run_till_abort'):
             self.buffer = np.zeros(shape=(self.Ny_ro, self.Nx_ro), dtype=np.int32 )     
         elif self.aq_mode == 'kinetic':
             self.get_num_kinetics()
-            self.buffer = np.zeros(shape=(self.num_kin, self.Ny_ro, self.Nx_ro), dtype=np.int32)  
+            self.buffer = np.zeros(shape=(self.num_kin, self.Ny_ro, self.Nx_ro), dtype=np.int32)
+        else:
+            raise ValueError("Andor Unkown acq mode {}".format(self.aq_mode))
         print(self.buffer.shape)
         return self.buffer
     
@@ -684,7 +686,11 @@ class AndorCCD(object):
         return self.num_acc
     
     def set_num_kinetics(self, num):
-        with self.lock: _err(self.andorlib.SetNumberKinetics(num))
+        """This function will set the number of scans (possibly accumulated scans) to be taken
+            during a single acquisition sequence. This will only take effect if the acquisition mode is
+            Kinetic Series"""
+        print('set_num_kinetics', num)
+        with self.lock: _err(self.andorlib.SetNumberKinetics(int(num)))
         self.num_kin = num
     
     def get_num_kinetics(self):

@@ -193,11 +193,18 @@ class AndorCCDHW(HardwareComponent):
         self.num_kin.connect_to_hardware(
             #read_func=self.ccd_dev.get_num_kinetics,
             write_func=self.ccd_dev.set_num_kinetics)
-        self.num_kin.write_to_hardware()
-        
+        try:
+            self.num_kin.write_to_hardware()
+        except Exception as err:
+            self.log.error("set_num_kinetics failed {}".format(err))
+            
         self.acc_time.connect_to_hardware(
             write_func=self.ccd_dev.set_accumulation_cycle_time)
-        self.acc_time.write_to_hardware()
+        try:
+            self.acc_time.write_to_hardware()
+        except Exception as err:
+            self.log.error("set_accumulation_cycle_time failed {}".format(err))
+            
         self.kin_time.connect_to_hardware(
             write_func=self.ccd_dev.set_kinetic_cycle_time)
         self.kin_time.write_to_hardware()

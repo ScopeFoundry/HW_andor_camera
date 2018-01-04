@@ -163,6 +163,9 @@ class AndorCCDReadoutMeasure(Measurement):
         width_px = ccd_dev.Nx_ro
         height_px = ccd_dev.Ny_ro
         
+        ccd_hw.settings['acq_mode'] = 'single'
+        ccd_hw.settings['trigger_mode'] = 'internal'
+        
         
         t_acq = self.app.hardware['andor_ccd'].settings['exposure_time'] #in seconds
         
