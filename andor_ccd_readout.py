@@ -172,20 +172,6 @@ class AndorCCDReadoutMeasure(Measurement):
         wait_time = 0.01 #np.min(1.0,np.max(0.05*t_acq, 0.05)) # limit update period to 50ms (in ms) or as slow as 1sec
         
         
-        wl_calib = self.settings['wl_calib']
-        hbin = ccd_dev.get_current_hbin()
-        if wl_calib=='acton_spectrometer':
-            px_index = np.arange(width_px)
-            spec_hw = self.app.hardware['acton_spectrometer']
-            self.wls = spec_hw.get_wl_calibration(px_index, hbin)
-        elif wl_calib=='pixels':
-            binning = hbin
-            px_index = np.arange(width_px)
-            self.wls = binned_px = binning*px_index + 0.5*(binning-1)
-        elif wl_calib=='raw_pixels':
-            self.wls = np.arange(width_px)
-        else:
-            self.wls = np.arange(width_px)
             
         try:
             self.log.info("starting acq")
@@ -203,6 +189,22 @@ class AndorCCDReadoutMeasure(Measurement):
 #                 self.wls = np.arange(width_px)
 
             while not self.interrupt_measurement_called:
+
+                wl_calib = self.settings['wl_calib']
+                hbin = ccd_dev.get_current_hbin()
+                if wl_calib=='acton_spectrometer':
+                    px_index = np.arange(width_px)
+                    spec_hw = self.app.hardware['acton_spectrometer']
+                    self.wls = spec_hw.get_wl_calibration(px_index, hbin)
+                elif wl_calib=='pixels':
+                    binning = hbin
+                    px_index = np.arange(width_px)
+                    self.wls = binned_px = binning*px_index + 0.5*(binning-1)
+                elif wl_calib=='raw_pixels':
+                    self.wls = np.arange(width_px)
+                else:
+                    self.wls = np.arange(width_px)
+
             
                 stat = ccd_hw.settings.ccd_status.read_from_hardware()
                 if stat == 'IDLE':
