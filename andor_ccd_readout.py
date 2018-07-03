@@ -134,6 +134,10 @@ class AndorCCDReadoutMeasure(Measurement):
         self.spec_plot = self.graph_layout.addPlot()
         self.spec_plot_line = self.spec_plot.plot([1,3,2,4,3,5])
         self.spec_plot.enableAutoRange()
+        self.spec_infline = pg.InfiniteLine(movable=True, angle=90, label='x={value:0.2f}', 
+                       labelOpts={'position':0.1, 'color': (200,200,100), 'fill': (200,200,200,50), 'movable': True})
+        self.spec_plot.addItem(self.spec_infline)
+
         
         
         self.graph_layout.nextRow()
