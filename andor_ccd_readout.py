@@ -56,7 +56,7 @@ class AndorCCDReadoutMeasure(Measurement):
         #self.settings.New('continuous', dtype=bool, initial=True, ro=False) 
         self.settings.New('save_h5', dtype=bool, initial=True)
 
-        self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer'))
+        self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
 
         
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
@@ -200,6 +200,10 @@ class AndorCCDReadoutMeasure(Measurement):
                     px_index = np.arange(width_px)
                     spec_hw = self.app.hardware['acton_spectrometer']
                     self.wls = spec_hw.get_wl_calibration(px_index, hbin)
+                elif wl_calib=='andor_spectrometer':
+                    px_index = np.arange(width_px)
+                    spec_hw = self.app.hardware['andor_spec']
+                    self.wls = spec_hw.get_wl_calibration(px_index, hbin)   
                 elif wl_calib=='pixels':
                     binning = hbin
                     px_index = np.arange(width_px)
