@@ -65,7 +65,7 @@ class AndorCCD(object):
         
         if self.debug:  logger.debug("AndorCCD initializing")
             
-        with self.lock: _err(self.andorlib.Initialize(""))
+        with self.lock: _err(self.andorlib.Initialize(''))
         if self.debug: logger.debug("Andor CCD Library Initialization Successful")
         
         self.get_head_model()
@@ -87,11 +87,17 @@ class AndorCCD(object):
             self.set_aq_single_scan() # set to single scan by default
             self.set_num_accumulations(1)
             self.set_num_kinetics(1)
+
+        # EM gain
+        self.em_mode = self.has_em_ccd()
+        if self.em_mode:
+            self.get_EM_gain_range()
+            self.get_EMCCD_gain()
         
         #shift speeds
         self.read_shift_speeds()
         if initialize_to_defaults:
-            self.set_hs_speed_em()
+            if self.em_mode: self.set_hs_speed_em()
             self.set_hs_speed_conventional()
             self.set_vs_speed()
 
@@ -99,13 +105,6 @@ class AndorCCD(object):
         self.get_preamp_gains()
         if initialize_to_defaults:
             self.set_preamp_gain()
-
-
-        # EM gain
-        self.em_mode = self.has_em_ccd()
-        if self.em_mode:
-            self.get_EM_gain_range()
-            self.get_EMCCD_gain()
 
         # temperature        
         self.get_temperature_range()
@@ -129,6 +128,7 @@ class AndorCCD(object):
         headModel = ctypes.create_string_buffer(consts.MAX_PATH)
         with self.lock: _err(self.andorlib.GetHeadModel(headModel))
         self.headModel = headModel.raw.decode().strip('\x00')
+        print(self.headModel)
         if self.debug: logger.debug("Head model: "+ repr(self.headModel))
         return self.headModel
 
@@ -425,13 +425,18 @@ class AndorCCD(object):
         self.numHSSpeeds_EM = []
         self.numHSSpeeds_Conventional = []
         for chan_i in range(self.numADChan):
-            retval = self.andorlib.GetNumberHSSpeeds(chan_i, 0, byref(numHSSpeeds)) # EM mode
-            assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
-            self.numHSSpeeds_EM.append(numHSSpeeds.value)
-            retval = self.andorlib.GetNumberHSSpeeds(chan_i, 1, byref(numHSSpeeds)) # conventional mode mode
-            assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
-            self.numHSSpeeds_Conventional.append(numHSSpeeds.value)
-            
+            if self.em_mode:
+                retval = self.andorlib.GetNumberHSSpeeds(chan_i, 0, byref(numHSSpeeds)) # EM mode
+                assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+                self.numHSSpeeds_EM.append(numHSSpeeds.value)
+                
+                retval = self.andorlib.GetNumberHSSpeeds(chan_i, 1, byref(numHSSpeeds)) # conventional mode mode
+                assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+                self.numHSSpeeds_Conventional.append(numHSSpeeds.value)
+            else:
+                retval = self.andorlib.GetNumberHSSpeeds(chan_i, 0, byref(numHSSpeeds)) # EM mode
+                assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+                self.numHSSpeeds_Conventional.append(numHSSpeeds.value)
 
         logger.debug('# of horizontal speeds EM: {}'.format(self.numHSSpeeds_EM))
         logger.debug('# of horizontal speeds Conventional: {}'.format(self.numHSSpeeds_Conventional))
@@ -441,16 +446,21 @@ class AndorCCD(object):
         speed = c_float(0)
         for chan_i in range(self.numADChan):
             self.HSSpeeds_EM.append([])
-            hsspeeds = self.HSSpeeds_EM[chan_i]
-            for i in range(self.numHSSpeeds_EM[chan_i]):
-                retval = self.andorlib.GetHSSpeed(chan_i, 0, i, byref(speed)) # EM mode
-                assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
-                hsspeeds.append(speed.value)
+            if self.em_mode:
+                hsspeeds = self.HSSpeeds_EM[chan_i]
+                for i in range(self.numHSSpeeds_EM[chan_i]):
+                    retval = self.andorlib.GetHSSpeed(chan_i, 0, i, byref(speed)) # EM mode
+                    assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+                    hsspeeds.append(speed.value)
+                conventional_index = 1
+            else:
+                conventional_index = 0
+            
             self.HSSpeeds_Conventional.append([])
             hsspeeds = self.HSSpeeds_Conventional[chan_i]
             for i in range(self.numHSSpeeds_Conventional[chan_i]):
                 #print chan_i, i
-                retval = self.andorlib.GetHSSpeed(chan_i,  1, i, byref(speed)) # Conventional mode
+                retval = self.andorlib.GetHSSpeed(chan_i,  conventional_index, i, byref(speed)) # Conventional mode
                 assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
                 hsspeeds.append(speed.value)
             
@@ -482,7 +492,10 @@ class AndorCCD(object):
     def set_hs_speed_conventional(self,speed_index=0):
         print("set_hs_speed_conventional", speed_index, self.ad_chan)
         assert 0 <= speed_index < self.numHSSpeeds_Conventional[self.ad_chan]
-        with self.lock: _err(self.andorlib.SetHSSpeed(1, speed_index)) # 0 = default speed (fastest), #arg0 -> conventional = 1
+        if self.em_mode:
+            with self.lock: _err(self.andorlib.SetHSSpeed(1, speed_index)) # 0 = default speed (fastest), #arg0 -> conventional = 1
+        else:
+            with self.lock: _err(self.andorlib.SetHSSpeed(0, speed_index)) # 0 = default speed (fastest), #arg0 -> conventional = 1
 
     def set_vs_speed(self, speed_index=0):
         assert 0 <= speed_index < self.numVSSpeeds
