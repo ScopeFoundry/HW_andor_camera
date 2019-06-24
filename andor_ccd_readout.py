@@ -50,10 +50,10 @@ class AndorCCDReadoutMeasure(Measurement):
         #local logged quantities
         self.bg_subtract = self.add_logged_quantity('bg_subtract', dtype=bool, initial=False, ro=False)
         self.acquire_bg  = self.add_logged_quantity('acquire_bg',  dtype=bool, initial=False, ro=False)
-        self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
+        # self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
 
         # TODO: Switch to use continuous rather than read_single to change between singleshot and continuous
-        #self.settings.New('continuous', dtype=bool, initial=True, ro=False) 
+        self.settings.New('continuous', dtype=bool, initial=True, ro=False) 
         self.settings.New('save_h5', dtype=bool, initial=True)
 
         self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
@@ -93,7 +93,7 @@ class AndorCCDReadoutMeasure(Measurement):
         self.start()
     
     def acquire_single_start(self):
-        self.read_single.update_value(True)
+        self.settings.continuous.update_value(False)
         self.start()
 
     def setup_figure(self):
@@ -105,7 +105,7 @@ class AndorCCDReadoutMeasure(Measurement):
         ui = self.ui = load_qt_ui_file(sibling_path(__file__, 'andor_ccd_readout.ui'))
         
         ## ui connection
-        andor = self.app.hardware['andor_ccd']
+        self.hw = andor = self.app.hardware['andor_ccd']
         andor.settings.exposure_time.connect_to_widget(ui.andor_ccd_int_time_doubleSpinBox)
         andor.settings.em_gain.connect_to_widget(ui.andor_ccd_emgain_doubleSpinBox)
         andor.settings.temperature.connect_to_widget(ui.andor_ccd_temp_doubleSpinBox)
@@ -175,10 +175,12 @@ class AndorCCDReadoutMeasure(Measurement):
         
         wait_time = 0.01 #np.min(1.0,np.max(0.05*t_acq, 0.05)) # limit update period to 50ms (in ms) or as slow as 1sec
         
-        
+        # print('andor_ccd_readout run')
             
         try:
             self.log.info("starting acq")
+            
+            # print("starting acq")
             ccd_dev.start_acquisition()
         
             self.log.info( "checking..." )
@@ -241,7 +243,7 @@ class AndorCCDReadoutMeasure(Measurement):
                     self.spectra_data = np.average(self.buffer_, axis=0)
  
  
-                    if self.acquire_bg.val or self.read_single.val:
+                    if self.acquire_bg.val or not self.settings.continuous.val:
                         break # end the while loop for non-continuous scans
                     else:
                         # restart acq
@@ -276,7 +278,7 @@ class AndorCCDReadoutMeasure(Measurement):
                     ccd_hw.background = self.buffer_.copy()
                 self.acquire_bg.update_value(False)    
         
-            if self.read_single.val:
+            if not self.settings.continuous.val:
                 if self.interrupt_measurement_called:
                     self.spectrum = None
                 else:
@@ -315,7 +317,8 @@ class AndorCCDReadoutMeasure(Measurement):
                     self.log.info( "saved: " + self.fname)
                     
                 self.log.info( "Andor CCD single acq successfully acquired")
-                self.read_single.update_value(False)
+                # print("Andor CCD single acq successfully acquired")
+                # self.settings.continuous.update_value(True)
                 
             ccd_hw.settings.ccd_status.read_from_hardware()
             ccd_hw.settings.temperature.read_from_hardware()
@@ -354,11 +357,14 @@ class AndorCCDStepAndGlue(Measurement):
         self.center_wl_stop  = self.add_logged_quantity('center_wl_stop', dtype=float, initial=1100, ro=False)
         self.center_wl_step = self.add_logged_quantity('center_wl_step', dtype=float, initial=50, ro=False)
 
-        
+    
+    def setup_figure(self):
+        ui = self.ui = load_qt_ui_file(sibling_path(__file__, 'andor_ccd_readout.ui'))
+    
         #connect events
-        self.bg_subtract.connect_bidir_to_widget(self.gui.ui.andor_ccd_bgsub_checkBox)
+        self.bg_subtract.connect_bidir_to_widget(self.ui.andor_ccd_bgsub_checkBox)
         
-
+    
 
     def _run(self):
 
