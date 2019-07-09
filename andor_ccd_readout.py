@@ -48,9 +48,16 @@ class AndorCCDReadoutMeasure(Measurement):
         self.display_update_period = 0.050 #seconds
 
         #local logged quantities
+<<<<<<< HEAD
         self.bg_subtract = self.add_logged_quantity('bg_subtract', dtype=bool, initial=False, ro=False)
         self.acquire_bg  = self.add_logged_quantity('acquire_bg',  dtype=bool, initial=False, ro=False)
         # self.read_single = self.add_logged_quantity('read_single', dtype=bool, initial=False, ro=False)
+=======
+        self.bg_subtract = self.settings.New('bg_subtract', dtype=bool, initial=False, ro=False)
+        self.acquire_bg  = self.settings.New('acquire_bg',  dtype=bool, initial=False, ro=False)
+        self.read_single = self.settings.New('read_single', dtype=bool, initial=False, ro=False)
+
+>>>>>>> 549653b04d4c4beb71eadfe0d46c56f88bbc09c1
 
         # TODO: Switch to use continuous rather than read_single to change between singleshot and continuous
         self.settings.New('continuous', dtype=bool, initial=True, ro=False) 
@@ -332,13 +339,22 @@ class AndorCCDReadoutMeasure(Measurement):
             if len(self.buffer_.shape) == 2:
                 self.img_item.setImage(self.buffer_.astype(np.float32).T, autoLevels=False)
                 self.hist_lut.imageChanged(autoLevel=True, autoRange=True)
-         
-                self.spec_plot_line.setData(self.wls, self.spectra_data)
+                y = self.spectra_data
+                
             else: # kinetic
                 self.img_item.setImage(self.buffer_[:,:,:].sum(axis=0).astype(np.float32).T, autoLevels=False)
                 self.hist_lut.imageChanged(autoLevel=True, autoRange=True)
-         
-                self.spec_plot_line.setData(self.wls, self.buffer_[:,:,:].sum(axis=(0,1)))
+                y = self.buffer_[:,:,:].sum(axis=(0,1))
+
+            x = self.wls        
+            self.spec_plot_line.setData(x,y)
+    
+    def get_spectrum(self):
+        return np.squeeze(self.spectrum)
+    
+    def get_wavelengths(self):
+        return self.wls
+                  
                   
 class AndorCCDStepAndGlue(Measurement):
 
@@ -453,4 +469,10 @@ class AndorCCDStepAndGlue(Measurement):
             self.log.error( "{} error: {}".format(self.name, err))
         finally:            
             ccd_hw.interrupt_acquisition()
-            self.h5_file.close()
+            self.h5_file.close()            
+            
+    def get_spectrum(self):
+        return np.squeeze(self.spectrum)
+    
+    def get_wavelengths(self):
+        return self.wls
