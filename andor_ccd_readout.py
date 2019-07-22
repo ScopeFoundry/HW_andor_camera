@@ -59,6 +59,7 @@ class AndorCCDReadoutMeasure(Measurement):
 
         self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
 
+        self.settings.New('count_rate', dtype=float, initial=True, ro=True, si=True)
         
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
         self.add_operation('run_acquire_single', self.acquire_single_start)
@@ -241,7 +242,8 @@ class AndorCCDReadoutMeasure(Measurement):
 
                     self.spectra_data = np.average(self.buffer_, axis=0)
  
- 
+                    self.settings['count_rate'] = 1.0 * self.spectra_data.sum() / ccd_hw.settings['exposure_time']
+
                     if self.acquire_bg.val or self.read_single.val:
                         break # end the while loop for non-continuous scans
                     else:
