@@ -111,10 +111,11 @@ class AndorCCDReadoutMeasure(Measurement):
         andor.settings.ccd_status.connect_to_widget(ui.andor_ccd_status_label)
         andor.settings.shutter_open.connect_to_widget(ui.andor_ccd_shutter_open_checkBox)
         
+        self.settings.continuous.connect_to_widget(ui.andor_ccd_continuous_checkBox)
         self.settings.bg_subtract.connect_to_widget(ui.andor_ccd_bgsub_checkBox)
-        ui.andor_ccd_acquire_cont_checkBox.stateChanged.connect(self.start_stop)
         ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
-        ui.andor_ccd_read_single_pushButton.clicked.connect(self.acquire_single_start)
+        ui.andor_ccd_start_pushButton.clicked.connect(self.start)
+        ui.andor_ccd_interrupt_pushButton.clicked.connect(self.interrupt)
         
         andor.settings.temp_status.connect_to_widget(self.ui.temp_status_label)
         andor.settings.temp_setpoint.connect_to_widget(self.ui.temp_setpoint_doubleSpinBox)
