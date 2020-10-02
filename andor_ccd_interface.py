@@ -470,8 +470,11 @@ class AndorCCD(object):
         #Vertical  speeds
         numVSSpeeds = c_int(-1)
         retval = self.andorlib.GetNumberVSSpeeds(byref(numVSSpeeds))
-        assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
-        self.numVSSpeeds = numVSSpeeds.value
+        if retval == 20991: # DRV_NOT_SUPPORTED, for the case of iDus IR InGaAs single line detectors
+            self.numVSSpeeds = 0
+        else:
+            assert retval == consts.DRV_SUCCESS, "Andor DRV Failure %i" % retval
+            self.numVSSpeeds = numVSSpeeds.value
 
         self.VSSpeeds = []
         speed = c_float(0)
