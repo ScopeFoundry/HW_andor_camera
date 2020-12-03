@@ -65,11 +65,17 @@ class AndorSpecCalibMeasure(Measurement):
             self.ui.andor_exp_time_doubleSpinBox)
         
         # Spectrometer settings
-        self.spec = spec = self.app.hardware['acton_spectrometer']
+        if 'acton_spectrometer' in list(self.app.hardware.keys()):
+            self.spec = spec = self.app.hardware['acton_spectrometer']
+            spec.settings.entrance_slit.connect_to_widget(self.ui.spec_ent_slit_doubleSpinBox)
+        elif 'andor_spec' in list(self.app.hardware.keys()):
+            self.spec = spec = self.app.hardware['andor_spec']
+            spec.settings.slit_input_side.connect_to_widget(self.ui.spec_ent_slit_doubleSpinBox)
+        else:
+            raise Exception('No spectrometer!')
         spec.settings.center_wl.connect_to_widget(
             self.ui.spec_center_wl_doubleSpinBox)
-        spec.settings.entrance_slit.connect_to_widget(
-            self.ui.spec_ent_slit_doubleSpinBox)
+        
         spec.settings.grating_id.connect_to_widget(
             self.ui.spec_grating_id_comboBox)
 
