@@ -50,7 +50,7 @@ class AndorCCDReadoutMeasure(Measurement):
         #local logged quantities
         self.bg_subtract = self.settings.New('bg_subtract', dtype=bool, initial=False, ro=False)
         self.acquire_bg  = self.settings.New('acquire_bg',  dtype=bool, initial=False, ro=False)
-        self.count_rate = self.settings.New('count_rate', dtype=double, initial=0, ro=True)
+        self.count_rate = self.settings.New('count_rate', initial=0, ro=True)
 
         self.settings.New('continuous', dtype=bool, initial=True, ro=False) 
         self.settings.New('save_h5', dtype=bool, initial=True)
