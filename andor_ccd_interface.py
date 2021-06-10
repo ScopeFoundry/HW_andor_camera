@@ -51,8 +51,14 @@ class AndorCCD(object):
         
         
         if platform.architecture()[0] == '64bit':
-            andorlibpath = r"C:\Program Files\Andor SOLIS\atmcd64d_legacy.dll"
-            if not os.path.exists(andorlibpath):    
+            andorlibpath = None
+            for path in [r"C:\Program Files\Andor Driver Pack 2\atmcd64d.dll",
+                         r"C:\Program Files\Andor SOLIS\atmcd64d_legacy.dll",]:
+                if os.path.exists(path):
+                    andorlibpath = path
+                    break
+                
+            if andorlibpath is None:    
                 andorlibpath = str(os.path.join(os.path.dirname(__file__),"atmcd64d.dll"))
         else:
             andorlibpath = str(os.path.join(os.path.dirname(__file__),"atmcd32d.dll"))
