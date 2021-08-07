@@ -59,16 +59,9 @@
          <set>Qt::AlignCenter</set>
         </property>
         <layout class="QGridLayout" name="gridLayout_6">
-         <item row="4" column="0">
-          <widget class="QDoubleSpinBox" name="temp_setpoint_doubleSpinBox">
-           <property name="font">
-            <font>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
-           </property>
-          </widget>
-         </item>
+         <property name="verticalSpacing">
+          <number>0</number>
+         </property>
          <item row="2" column="0">
           <widget class="QLabel" name="label_21">
            <property name="font">
@@ -107,7 +100,47 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="6" column="0">
+          <widget class="QDoubleSpinBox" name="temp_setpoint_doubleSpinBox">
+           <property name="font">
+            <font>
+             <weight>50</weight>
+             <bold>false</bold>
+            </font>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="2">
+          <widget class="QLabel" name="andor_ccd_status_label">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>STATUS</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0" colspan="2">
+          <widget class="QCheckBox" name="hw_connect_checkBox">
+           <property name="font">
+            <font>
+             <weight>50</weight>
+             <bold>false</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>connected</string>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="1">
           <widget class="QDoubleSpinBox" name="andor_ccd_temp_doubleSpinBox">
            <property name="font">
             <font>
@@ -141,40 +174,7 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="0" colspan="2">
-          <widget class="QLabel" name="temp_status_label">
-           <property name="font">
-            <font>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>STATUS</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0" colspan="2">
-          <widget class="QLabel" name="andor_ccd_status_label">
-           <property name="font">
-            <font>
-             <pointsize>11</pointsize>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>STATUS</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0" colspan="2">
+         <item row="3" column="0">
           <widget class="QLabel" name="label_22">
            <property name="font">
             <font>
@@ -187,8 +187,8 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="0" colspan="2">
-          <widget class="QCheckBox" name="hw_connect_checkBox">
+         <item row="7" column="0" colspan="2">
+          <widget class="QLabel" name="temp_status_label">
            <property name="font">
             <font>
              <weight>50</weight>
@@ -196,7 +196,10 @@
             </font>
            </property>
            <property name="text">
-            <string>connected</string>
+            <string>STATUS</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
            </property>
           </widget>
          </item>
@@ -227,19 +230,16 @@
          <set>Qt::AlignCenter</set>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
-         <item row="5" column="1">
-          <widget class="QPushButton" name="andor_ccd_start_pushButton">
+         <item row="4" column="1">
+          <widget class="QCheckBox" name="save_h5_checkBox">
            <property name="font">
             <font>
-             <weight>75</weight>
-             <bold>true</bold>
+             <weight>50</weight>
+             <bold>false</bold>
             </font>
            </property>
-           <property name="styleSheet">
-            <string notr="true">background-color: rgb(170, 255, 0)</string>
-           </property>
            <property name="text">
-            <string>Start</string>
+            <string>Save H5</string>
            </property>
           </widget>
          </item>
@@ -253,19 +253,6 @@
            </property>
            <property name="text">
             <string>Exposure time</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="1">
-          <widget class="QCheckBox" name="save_h5_checkBox">
-           <property name="font">
-            <font>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>Save H5</string>
            </property>
           </widget>
          </item>
@@ -285,6 +272,50 @@
            </property>
            <property name="checkable">
             <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QPushButton" name="andor_ccd_start_pushButton">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(170, 255, 0)</string>
+           </property>
+           <property name="text">
+            <string>Start</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QDoubleSpinBox" name="andor_ccd_int_time_doubleSpinBox">
+           <property name="font">
+            <font>
+             <weight>50</weight>
+             <bold>false</bold>
+            </font>
+           </property>
+           <property name="keyboardTracking">
+            <bool>false</bool>
+           </property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="minimum">
+            <double>0.001000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>999.990000000000009</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
+           <property name="value">
+            <double>1.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -719,33 +750,18 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="2">
-          <widget class="QDoubleSpinBox" name="andor_ccd_int_time_doubleSpinBox">
-           <property name="font">
-            <font>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
+         <item row="6" column="2">
+          <spacer name="verticalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
            </property>
-           <property name="keyboardTracking">
-            <bool>false</bool>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
            </property>
-           <property name="decimals">
-            <number>3</number>
-           </property>
-           <property name="minimum">
-            <double>0.001000000000000</double>
-           </property>
-           <property name="maximum">
-            <double>999.990000000000009</double>
-           </property>
-           <property name="singleStep">
-            <double>0.100000000000000</double>
-           </property>
-           <property name="value">
-            <double>1.000000000000000</double>
-           </property>
-          </widget>
+          </spacer>
          </item>
         </layout>
        </widget>
@@ -753,7 +769,7 @@
       <item>
        <widget class="QGroupBox" name="groupBox_3">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -786,23 +802,28 @@
          <property name="spacing">
           <number>0</number>
          </property>
-         <item>
-          <widget class="QCheckBox" name="explore_mode_checkBox">
-           <property name="font">
-            <font>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>run continuous</string>
-           </property>
-          </widget>
-         </item>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QTextEdit" name="textEdit">
            <property name="enabled">
             <bool>false</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
            </property>
            <property name="maximumSize">
             <size>
@@ -835,6 +856,19 @@ p, li { white-space: pre-wrap; }
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="explore_mode_checkBox">
+           <property name="font">
+            <font>
+             <weight>50</weight>
+             <bold>false</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>run continuous</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QDoubleSpinBox" name="explore_mode_exposure_time_doubleSpinBox">
            <property name="font">
             <font>
@@ -843,9 +877,22 @@ p, li { white-space: pre-wrap; }
             </font>
            </property>
            <property name="decimals">
-            <number>5</number>
+            <number>4</number>
            </property>
           </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
          </item>
         </layout>
        </widget>
@@ -900,19 +947,6 @@ p, li { white-space: pre-wrap; }
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
-          <widget class="QCheckBox" name="andor_ccd_bgsub_checkBox">
-           <property name="font">
-            <font>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>BG Substract</string>
-           </property>
-          </widget>
-         </item>
          <item row="1" column="0">
           <widget class="QPushButton" name="andor_ccd_acq_bg_pushButton">
            <property name="font">
@@ -926,8 +960,31 @@ p, li { white-space: pre-wrap; }
            </property>
           </widget>
          </item>
+         <item row="4" column="0">
+          <widget class="QCheckBox" name="andor_ccd_bgsub_checkBox">
+           <property name="font">
+            <font>
+             <weight>50</weight>
+             <bold>false</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>BG Substract</string>
+           </property>
+          </widget>
+         </item>
          <item row="5" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout"/>
+          <spacer name="verticalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
          </item>
         </layout>
        </widget>
@@ -1030,7 +1087,7 @@ p, li { white-space: pre-wrap; }
             </font>
            </property>
            <property name="text">
-            <string>show spec line</string>
+            <string>show veritcal line</string>
            </property>
           </widget>
          </item>
@@ -1110,12 +1167,12 @@ p, li { white-space: pre-wrap; }
    <slot>setHidden(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>806</x>
-     <y>85</y>
+     <x>847</x>
+     <y>116</y>
     </hint>
     <hint type="destinationlabel">
-     <x>792</x>
-     <y>179</y>
+     <x>801</x>
+     <y>315</y>
     </hint>
    </hints>
   </connection>
@@ -1126,12 +1183,12 @@ p, li { white-space: pre-wrap; }
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>823</x>
-     <y>89</y>
+     <x>847</x>
+     <y>116</y>
     </hint>
     <hint type="destinationlabel">
-     <x>826</x>
-     <y>307</y>
+     <x>835</x>
+     <y>434</y>
     </hint>
    </hints>
   </connection>
@@ -1142,12 +1199,12 @@ p, li { white-space: pre-wrap; }
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>812</x>
-     <y>113</y>
+     <x>847</x>
+     <y>139</y>
     </hint>
     <hint type="destinationlabel">
-     <x>851</x>
-     <y>435</y>
+     <x>857</x>
+     <y>554</y>
     </hint>
    </hints>
   </connection>
@@ -1158,12 +1215,28 @@ p, li { white-space: pre-wrap; }
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>427</x>
-     <y>37</y>
+     <x>515</x>
+     <y>56</y>
     </hint>
     <hint type="destinationlabel">
      <x>349</x>
      <y>26</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>explore_mode_checkBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>explore_mode_exposure_time_doubleSpinBox</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>454</x>
+     <y>51</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>488</x>
+     <y>166</y>
     </hint>
    </hints>
   </connection>

@@ -56,7 +56,7 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.New('save_h5', dtype=bool, initial=True)
 
         self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
-        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec')
+        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec', spinbox_decimals=4)
         self.settings.New('explore_mode', bool, initial=False)
         self.settings.explore_mode.add_listener(self.set_explore_mode)
         
@@ -142,7 +142,6 @@ class AndorCCDReadoutMeasure(Measurement):
         # NOTE, view toggling is handled in andor_ccd_readout.ui file!!
         self.graph_layout = pg.GraphicsLayoutWidget()
         self.ui.plot_groupBox.layout().addWidget(self.graph_layout)
-        
         self.spec_plot = self.graph_layout.addPlot()
         self.spec_plot_line = self.spec_plot.plot([1,3,2,4,3,5])
         self.spec_plot.enableAutoRange()
@@ -153,7 +152,6 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.show_line.add_listener(self.on_change_show_line)
         self.settings.show_line.connect_to_widget(self.ui.show_spec_line_checkBox)
         
-                        
         #### Image window        
         self.img_layout = pg.GraphicsLayoutWidget()
         self.ui.image_groupBox.layout().addWidget(self.img_layout)
@@ -163,12 +161,10 @@ class AndorCCDReadoutMeasure(Measurement):
         self.img_plot.setAspectLocked(lock=True, ratio=1)
         self.img_item = pg.ImageItem()
         self.img_plot.addItem(self.img_item)
-
         self.hist_lut = pg.HistogramLUTItem()
         self.hist_lut.autoHistogramRange()
         self.hist_lut.setImageItem(self.img_item)
-        self.graph_layout.addItem(self.hist_lut)
-        
+        self.img_layout.addItem(self.hist_lut)
         self.ui.image_view_checkBox.setCheckState(False) #hide first.
                 
         ### CCD settings
@@ -379,8 +375,7 @@ class AndorCCDReadoutMeasure(Measurement):
     
     def set_explore_mode(self):
         if self.settings['explore_mode']:
-            print(self.settings['explore_mode'])
-
+            self.hw.settings['connected'] = True
             self.interrupt_measurement_called = True
             time.sleep(0.1)
             # store settings
