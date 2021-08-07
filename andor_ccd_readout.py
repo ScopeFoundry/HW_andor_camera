@@ -226,7 +226,11 @@ class AndorCCDReadoutMeasure(Measurement):
                     self.buffer_ = ccd_hw.get_acquired_data()
                                         
                     #print('andor_ccd buffer', self.buffer_.shape, ccd_dev.buffer.shape)
-                
+                            
+                    if ccd_hw.settings['acq_mode'] == 'accumulate':
+                        self.buffer_ = self.buffer_ / ccd_hw.settings['num_acc']
+                        print(self.name, 'buffer division', self.buffer_[0][0])
+                                        
                     if self.bg_subtract.val and not self.acquire_bg.val:
                         bg = ccd_hw.background
                         if bg is not None:
@@ -236,9 +240,8 @@ class AndorCCDReadoutMeasure(Measurement):
                                 self.log.warning("Background not the correct shape {} != {}".format( self.buffer_.shape, bg.shape))
                         else:
                             self.log.warning( "No Background available, raw data shown")
-                            
-                    if ccd_hw.settings['acq_mode'] == 'accumulate':
-                        self.buffer_ = self.buffer_ / ccd_hw.settings['num_acc']
+
+                    #print(self.name, 'after bg', self.buffer_[0][0])
 
                     self.spectra_data = np.average(self.buffer_, axis=0)
                     self.settings['count_rate'] = np.sum(self.spectra_data)/t_acq
