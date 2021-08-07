@@ -94,8 +94,11 @@ class AndorCCDReadoutMeasure(Measurement):
         self.start()
     
     def acquire_single_start(self):
+        '''Deprecated, use continuous settings instead'''
         self.settings.continuous.update_value(False)
         self.start()
+
+        
 
     def setup_figure(self):
 
@@ -114,6 +117,9 @@ class AndorCCDReadoutMeasure(Measurement):
         andor.settings.shutter_open.connect_to_widget(ui.andor_ccd_shutter_open_checkBox)
         
         self.settings.continuous.connect_to_widget(ui.andor_ccd_continuous_checkBox)
+        self.settings.explore_mode.connect_to_widget(ui.explore_mode_checkBox)
+        self.settings.explore_mode_exposure_time.connect_to_widget(ui.explore_mode_exposure_time_doubleSpinBox)
+        
         self.settings.bg_subtract.connect_to_widget(ui.andor_ccd_bgsub_checkBox)
         ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
         ui.andor_ccd_start_pushButton.clicked.connect(self.start)
@@ -130,6 +136,7 @@ class AndorCCDReadoutMeasure(Measurement):
 
 
         #### PLot window
+        # NOTE, view toggling is handled in andor_ccd_readout.ui file!!
         self.graph_layout = pg.GraphicsLayoutWidget()
         self.ui.plot_groupBox.layout().addWidget(self.graph_layout)
         
@@ -140,23 +147,28 @@ class AndorCCDReadoutMeasure(Measurement):
                        labelOpts={'position':0.1, 'color': (200,200,100), 'fill': (200,200,200,50), 'movable': True})
         self.spec_plot.addItem(self.spec_infline)
 
-        
-        
-        self.graph_layout.nextRow()
-        
-        self.img_plot = self.graph_layout.addPlot()
+                
+        #### Image window        
+        self.img_layout = pg.GraphicsLayoutWidget()
+        self.ui.image_groupBox.layout().addWidget(self.img_layout)
+        self.img_plot = self.img_layout.addPlot()
         #self.img_plot.getViewBox().setLimits(minXRange=-10, maxXRange=100, minYRange=-10, maxYRange=100)
         self.img_plot.showGrid(x=True, y=True)
         self.img_plot.setAspectLocked(lock=True, ratio=1)
         self.img_item = pg.ImageItem()
         self.img_plot.addItem(self.img_item)
 
-
         self.hist_lut = pg.HistogramLUTItem()
         self.hist_lut.autoHistogramRange()
         self.hist_lut.setImageItem(self.img_item)
         self.graph_layout.addItem(self.hist_lut)
         
+        self.ui.image_view_checkBox.setCheckState(False) #hide first.
+                
+        ### CCD settings
+        self.cam_controls = self.app.hardware['andor_ccd'].settings.New_UI(style='scroll_form')
+        self.ui.ccd_settings_GroupBox.layout().addWidget(self.cam_controls)
+        self.ui.show_ccd_settings_checkBox.setCheckState(False) #hide first.
 
 
     def run(self):
