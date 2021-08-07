@@ -56,8 +56,10 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.New('save_h5', dtype=bool, initial=True)
 
         self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
-
-
+        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec')
+        self.settings.New('explore_mode', bool, initial=False)
+        self.settings.explore_mode.add_listener(self.set_explore_mode)
+        
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
         self.add_operation('run_acquire_single', self.acquire_single_start)
         
@@ -350,6 +352,40 @@ class AndorCCDReadoutMeasure(Measurement):
     
     def get_wavelengths(self):
         return self.wls
+    
+    def set_explore_mode(self):
+        if self.settings['explore_mode']:
+            print(self.settings['explore_mode'])
+
+            self.interrupt_measurement_called = True
+            time.sleep(0.1)
+            # store settings
+            self.ccd_state0 = {}
+            for lqname, lq in self.hw.settings.as_dict().items():
+                self.ccd_state0.update({lqname:lq.val})                
+            self.continuous0 = self.settings['continuous']
+            self.activation0 = self.settings['activation']
+            self.save_h50 = self.settings['save_h5']            
+            # set fast readout settings
+            self.hw.settings['exposure_time'] = self.settings['explore_mode_exposure_time']
+            self.hw.settings['acq_mode'] = 'single'            
+            self.settings['save_h5'] = False
+            self.settings['continuous'] = True
+            self.settings['activation'] = True
+        else:
+            print(self.settings['explore_mode'])
+
+            self.interrupt_measurement_called = True
+            time.sleep(0.1)
+            # set previous settings
+            for lqname, val in self.ccd_state0.items():
+                if lqname=='connected':
+                    continue
+                self.hw.settings[lqname] = val      
+            self.settings['continuous'] = self.continuous0           
+            self.settings['save_h5'] = self.save_h50
+            self.settings['activation'] = self.activation0           
+
                   
                   
 class AndorCCDStepAndGlue(Measurement):
