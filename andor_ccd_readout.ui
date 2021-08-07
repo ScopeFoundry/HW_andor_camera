@@ -842,6 +842,9 @@ p, li { white-space: pre-wrap; }
              <bold>false</bold>
             </font>
            </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
           </widget>
          </item>
         </layout>
@@ -963,7 +966,7 @@ p, li { white-space: pre-wrap; }
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
+         <item row="7" column="0">
           <widget class="QCheckBox" name="image_view_checkBox">
            <property name="font">
             <font>
@@ -973,6 +976,22 @@ p, li { white-space: pre-wrap; }
            </property>
            <property name="text">
             <string>image view / plot view</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="0">
+          <widget class="QCheckBox" name="show_ccd_settings_checkBox">
+           <property name="font">
+            <font>
+             <weight>50</weight>
+             <bold>false</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>show ccd settings</string>
            </property>
            <property name="checked">
             <bool>true</bool>
@@ -989,7 +1008,7 @@ p, li { white-space: pre-wrap; }
            </property>
           </widget>
          </item>
-         <item row="8" column="0">
+         <item row="9" column="0">
           <spacer name="verticalSpacer">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -1002,8 +1021,8 @@ p, li { white-space: pre-wrap; }
            </property>
           </spacer>
          </item>
-         <item row="7" column="0">
-          <widget class="QCheckBox" name="show_ccd_settings_checkBox">
+         <item row="6" column="0">
+          <widget class="QCheckBox" name="show_spec_line_checkBox">
            <property name="font">
             <font>
              <weight>50</weight>
@@ -1011,10 +1030,7 @@ p, li { white-space: pre-wrap; }
             </font>
            </property>
            <property name="text">
-            <string>show ccd settings</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
+            <string>show spec line</string>
            </property>
           </widget>
          </item>

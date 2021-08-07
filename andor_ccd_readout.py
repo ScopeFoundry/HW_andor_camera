@@ -63,6 +63,9 @@ class AndorCCDReadoutMeasure(Measurement):
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
         self.add_operation('run_acquire_single', self.acquire_single_start)
         
+        self.settings.New('show_line', bool, initial=False)
+
+        
         
 #     def pixel2wavelength(self, grating_position, pixel_index):
 #         offset = self.settings['calib_offset'] # nm
@@ -143,11 +146,14 @@ class AndorCCDReadoutMeasure(Measurement):
         self.spec_plot = self.graph_layout.addPlot()
         self.spec_plot_line = self.spec_plot.plot([1,3,2,4,3,5])
         self.spec_plot.enableAutoRange()
+        
+        ## measure_line
         self.spec_infline = pg.InfiniteLine(movable=True, angle=90, label='x={value:0.2f}', 
                        labelOpts={'position':0.1, 'color': (200,200,100), 'fill': (200,200,200,50), 'movable': True})
-        self.spec_plot.addItem(self.spec_infline)
-
-                
+        self.settings.show_line.add_listener(self.on_change_show_line)
+        self.settings.show_line.connect_to_widget(self.ui.show_spec_line_checkBox)
+        
+                        
         #### Image window        
         self.img_layout = pg.GraphicsLayoutWidget()
         self.ui.image_groupBox.layout().addWidget(self.img_layout)
@@ -169,7 +175,13 @@ class AndorCCDReadoutMeasure(Measurement):
         self.cam_controls = self.app.hardware['andor_ccd'].settings.New_UI(style='scroll_form')
         self.ui.ccd_settings_GroupBox.layout().addWidget(self.cam_controls)
         self.ui.show_ccd_settings_checkBox.setCheckState(False) #hide first.
-
+        
+        
+    def on_change_show_line(self):
+        if self.settings['show_line']:
+            self.spec_plot.addItem(self.spec_infline)
+        else:
+            self.spec_plot.removeItem(self.spec_infline)
 
     def run(self):
     
