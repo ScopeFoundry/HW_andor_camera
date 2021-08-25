@@ -365,6 +365,7 @@ class AndorCCDReadoutMeasure(Measurement):
                 y = self.buffer_[:,:,:].sum(axis=(0,1))
 
             x = self.wls        
+            
             self.spec_plot_line.setData(x,y)
     
     def get_spectrum(self):
@@ -378,7 +379,7 @@ class AndorCCDReadoutMeasure(Measurement):
             self.hw.settings['connected'] = True
             self.interrupt_measurement_called = True
             time.sleep(0.1)
-            # store settings
+            # store hw and measurement settings
             self.ccd_state0 = {}
             for lqname, lq in self.hw.settings.as_dict().items():
                 self.ccd_state0.update({lqname:lq.val})                
@@ -392,18 +393,18 @@ class AndorCCDReadoutMeasure(Measurement):
             self.settings['continuous'] = True
             self.settings['activation'] = True
         else:
-            print(self.settings['explore_mode'])
-
             self.interrupt_measurement_called = True
             time.sleep(0.1)
-            # set previous settings
-            for lqname, val in self.ccd_state0.items():
-                if lqname=='connected':
-                    continue
-                self.hw.settings[lqname] = val      
-            self.settings['continuous'] = self.continuous0           
-            self.settings['save_h5'] = self.save_h50
-            self.settings['activation'] = self.activation0           
+            # set to previous (stored) settings
+            if hasattr(self, 'ccd_state0'):
+                for lqname, val in self.ccd_state0.items():
+                    if lqname in ['connected']: #exclude some settings 
+                        continue
+                    else:
+                        self.hw.settings[lqname] = val      
+                self.settings['continuous'] = self.continuous0           
+                self.settings['save_h5'] = self.save_h50
+                self.settings['activation'] = self.activation0           
 
                   
                   
