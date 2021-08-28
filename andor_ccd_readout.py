@@ -56,8 +56,12 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.New('save_h5', dtype=bool, initial=True)
 
         self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
-        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec', spinbox_decimals=4)
-        self.settings.New('explore_mode', bool, initial=False)
+        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec', spinbox_decimals=4,
+                          description='integration time for <b>explore mode</b>.')
+        self.settings.New('explore_mode', bool, initial=False,
+                          description='''continuous readout using <b>explore_mode_exposure_time</b> 
+                                         and <b>acq_mode</b>=<i>single</i>. Does <b>NOT</b> save data. 
+                                         Interruption restores previous camera settings.''')
         self.settings.explore_mode.add_listener(self.set_explore_mode)
         
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
@@ -120,13 +124,16 @@ class AndorCCDReadoutMeasure(Measurement):
         andor.settings.shutter_open.connect_to_widget(ui.andor_ccd_shutter_open_checkBox)
         
         self.settings.continuous.connect_to_widget(ui.andor_ccd_continuous_checkBox)
-        self.settings.explore_mode.connect_to_widget(ui.explore_mode_checkBox)
+        self.settings.explore_mode.connect_to_pushButton(ui.run_explore_mode_pushButton, 
+                                                         colors=['yellow', 'orange'], 
+                                                         texts=['run explore mode', 'interrupt explore mode'])
         self.settings.explore_mode_exposure_time.connect_to_widget(ui.explore_mode_exposure_time_doubleSpinBox)
         
         self.settings.bg_subtract.connect_to_widget(ui.andor_ccd_bgsub_checkBox)
         ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
-        ui.andor_ccd_start_pushButton.clicked.connect(self.start)
-        ui.andor_ccd_interrupt_pushButton.clicked.connect(self.interrupt)
+        self.settings.activation.connect_to_pushButton(ui.andor_ccd_start_pushButton)
+        #ui.andor_ccd_start_pushButton.clicked.connect(self.start)
+        #ui.andor_ccd_interrupt_pushButton.clicked.connect(self.interrupt)
         
         andor.settings.temp_status.connect_to_widget(self.ui.temp_status_label)
         andor.settings.temp_setpoint.connect_to_widget(self.ui.temp_setpoint_doubleSpinBox)
@@ -375,9 +382,12 @@ class AndorCCDReadoutMeasure(Measurement):
         return self.wls
     
     def set_explore_mode(self):
+        self.interrupt()
+        time.sleep(0.1)
         if self.settings['explore_mode']:
-            self.hw.settings['connected'] = True
-            self.interrupt_measurement_called = True
+            if not self.hw.settings['connected']: 
+                self.hw.settings['connected'] = True
+                self.hw.read_from_hardware()
             time.sleep(0.1)
             # store hw and measurement settings
             self.ccd_state0 = {}
@@ -393,8 +403,6 @@ class AndorCCDReadoutMeasure(Measurement):
             self.settings['continuous'] = True
             self.settings['activation'] = True
         else:
-            self.interrupt_measurement_called = True
-            time.sleep(0.1)
             # set to previous (stored) settings
             if hasattr(self, 'ccd_state0'):
                 for lqname, val in self.ccd_state0.items():
