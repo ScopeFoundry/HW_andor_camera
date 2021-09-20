@@ -4,7 +4,6 @@ import pyqtgraph as pg
 
 from ScopeFoundry import Measurement 
 
-#import matplotlib.gridspec as gridspec 
 from time import sleep
 
 from ScopeFoundry import h5_io
@@ -187,18 +186,14 @@ class AndorCCDReadoutMeasure(Measurement):
             self.spec_plot.removeItem(self.spec_infline)
 
     def run(self):
-    
-        #setup data arrays         
-        
+
         ccd_hw = self.app.hardware['andor_ccd']
         ccd_dev = ccd_hw.ccd_dev
         
         width_px = ccd_dev.Nx_ro
         height_px = ccd_dev.Ny_ro
         
-        #ccd_hw.settings['acq_mode'] = 'single'
         ccd_hw.settings['trigger_mode'] = 'internal'
-        
         
         t_acq = self.app.hardware['andor_ccd'].settings['exposure_time'] #in seconds
         
@@ -222,6 +217,7 @@ class AndorCCDReadoutMeasure(Measurement):
 #                               #, binning=ccd_dev.get_current_hbin())
 #             else:
 #                 self.wls = np.arange(width_px)
+
 
             while not self.interrupt_measurement_called:
 
@@ -248,10 +244,6 @@ class AndorCCDReadoutMeasure(Measurement):
                 stat = ccd_hw.settings.ccd_status.read_from_hardware()
                 if stat == 'IDLE':
                     # grab data
-                    t1 = time.time()
-                    #print "acq time", (t1-t0)
-                    t0 = t1
-                
                     self.buffer_ = ccd_hw.get_acquired_data()
                                         
                     #print('andor_ccd buffer', self.buffer_.shape, ccd_dev.buffer.shape)
@@ -280,13 +272,29 @@ class AndorCCDReadoutMeasure(Measurement):
                     else:
                         # restart acq
                         ccd_dev.start_acquisition()
+
+                    if t_acq > 0.1:
+                        self.set_progress(0)
+                        t0 = time.time()
+
                     
                 else:
                     #sleep(wait_time)
                     #print("GetTotalNumberImagesAcquired", ccd_dev.get_total_number_images_acquired())
                     #print("get_number_new_images", ccd_dev.get_number_new_images())
                     #print("get_number_available_images", ccd_dev.get_number_available_images())
+
+
+                    if t_acq > 0.1:    
+                        if ccd_hw.settings['acq_mode'] == 'accumulate':
+                            pct = 100 * (time.time()-t0)/(t_acq * ccd_hw.settings['num_acc'])
+                        else:
+                            pct = 100 * (time.time()-t0)/t_acq
+                        self.set_progress(pct)
+
                     sleep(0.01)
+                    
+                    
                     try:
                         ccd_hw.settings.temperature.read_from_hardware()
                         ccd_hw.settings.temp_status.read_from_hardware()
@@ -356,8 +364,6 @@ class AndorCCDReadoutMeasure(Measurement):
             ccd_hw.settings.temperature.read_from_hardware()
             ccd_hw.settings.temp_status.read_from_hardware()
 
-
-    
     def update_display(self):
         if hasattr(self, 'buffer_'):
             #print('update_display', self.buffer_.shape)
@@ -494,6 +500,7 @@ class AndorCCDStepAndGlue(Measurement):
                     break
                 
                 #TODO add progress update
+                
 
                 # move to center wl
                 acton_spec_hc.center_wl.update_value(center_wl)
