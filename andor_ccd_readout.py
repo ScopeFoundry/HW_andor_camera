@@ -4,7 +4,6 @@ import pyqtgraph as pg
 
 from ScopeFoundry import Measurement 
 
-#import matplotlib.gridspec as gridspec 
 from time import sleep
 
 from ScopeFoundry import h5_io
@@ -56,8 +55,12 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.New('save_h5', dtype=bool, initial=True)
 
         self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
-        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec', spinbox_decimals=4)
-        self.settings.New('explore_mode', bool, initial=False)
+        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec', spinbox_decimals=4,
+                          description='integration time for <b>explore mode</b>.')
+        self.settings.New('explore_mode', bool, initial=False,
+                          description='''continuous readout using <b>explore_mode_exposure_time</b> 
+                                         and <b>acq_mode</b>=<i>single</i>. Does <b>NOT</b> save data. 
+                                         Interruption restores previous camera settings.''')
         self.settings.explore_mode.add_listener(self.set_explore_mode)
         
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
@@ -120,13 +123,16 @@ class AndorCCDReadoutMeasure(Measurement):
         andor.settings.shutter_open.connect_to_widget(ui.andor_ccd_shutter_open_checkBox)
         
         self.settings.continuous.connect_to_widget(ui.andor_ccd_continuous_checkBox)
-        self.settings.explore_mode.connect_to_widget(ui.explore_mode_checkBox)
+        self.settings.explore_mode.connect_to_pushButton(ui.run_explore_mode_pushButton, 
+                                                         colors=['yellow', 'orange'], 
+                                                         texts=['run explore mode', 'interrupt explore mode'])
         self.settings.explore_mode_exposure_time.connect_to_widget(ui.explore_mode_exposure_time_doubleSpinBox)
         
         self.settings.bg_subtract.connect_to_widget(ui.andor_ccd_bgsub_checkBox)
         ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
-        ui.andor_ccd_start_pushButton.clicked.connect(self.start)
-        ui.andor_ccd_interrupt_pushButton.clicked.connect(self.interrupt)
+        self.settings.activation.connect_to_pushButton(ui.andor_ccd_start_pushButton)
+        #ui.andor_ccd_start_pushButton.clicked.connect(self.start)
+        #ui.andor_ccd_interrupt_pushButton.clicked.connect(self.interrupt)
         
         andor.settings.temp_status.connect_to_widget(self.ui.temp_status_label)
         andor.settings.temp_setpoint.connect_to_widget(self.ui.temp_setpoint_doubleSpinBox)
@@ -180,18 +186,14 @@ class AndorCCDReadoutMeasure(Measurement):
             self.spec_plot.removeItem(self.spec_infline)
 
     def run(self):
-    
-        #setup data arrays         
-        
+
         ccd_hw = self.app.hardware['andor_ccd']
         ccd_dev = ccd_hw.ccd_dev
         
         width_px = ccd_dev.Nx_ro
         height_px = ccd_dev.Ny_ro
         
-        #ccd_hw.settings['acq_mode'] = 'single'
         ccd_hw.settings['trigger_mode'] = 'internal'
-        
         
         t_acq = self.app.hardware['andor_ccd'].settings['exposure_time'] #in seconds
         
@@ -215,6 +217,7 @@ class AndorCCDReadoutMeasure(Measurement):
 #                               #, binning=ccd_dev.get_current_hbin())
 #             else:
 #                 self.wls = np.arange(width_px)
+
 
             while not self.interrupt_measurement_called:
 
@@ -241,10 +244,6 @@ class AndorCCDReadoutMeasure(Measurement):
                 stat = ccd_hw.settings.ccd_status.read_from_hardware()
                 if stat == 'IDLE':
                     # grab data
-                    t1 = time.time()
-                    #print "acq time", (t1-t0)
-                    t0 = t1
-                
                     self.buffer_ = ccd_hw.get_acquired_data()
                                         
                     #print('andor_ccd buffer', self.buffer_.shape, ccd_dev.buffer.shape)
@@ -273,13 +272,29 @@ class AndorCCDReadoutMeasure(Measurement):
                     else:
                         # restart acq
                         ccd_dev.start_acquisition()
+
+                    if t_acq > 0.1:
+                        self.set_progress(0)
+                        t0 = time.time()
+
                     
                 else:
                     #sleep(wait_time)
                     #print("GetTotalNumberImagesAcquired", ccd_dev.get_total_number_images_acquired())
                     #print("get_number_new_images", ccd_dev.get_number_new_images())
                     #print("get_number_available_images", ccd_dev.get_number_available_images())
+
+
+                    if t_acq > 0.1:    
+                        if ccd_hw.settings['acq_mode'] == 'accumulate':
+                            pct = 100 * (time.time()-t0)/(t_acq * ccd_hw.settings['num_acc'])
+                        else:
+                            pct = 100 * (time.time()-t0)/t_acq
+                        self.set_progress(pct)
+
                     sleep(0.01)
+                    
+                    
                     try:
                         ccd_hw.settings.temperature.read_from_hardware()
                         ccd_hw.settings.temp_status.read_from_hardware()
@@ -349,8 +364,6 @@ class AndorCCDReadoutMeasure(Measurement):
             ccd_hw.settings.temperature.read_from_hardware()
             ccd_hw.settings.temp_status.read_from_hardware()
 
-
-    
     def update_display(self):
         if hasattr(self, 'buffer_'):
             #print('update_display', self.buffer_.shape)
@@ -365,6 +378,7 @@ class AndorCCDReadoutMeasure(Measurement):
                 y = self.buffer_[:,:,:].sum(axis=(0,1))
 
             x = self.wls        
+            
             self.spec_plot_line.setData(x,y)
     
     def get_spectrum(self):
@@ -374,11 +388,14 @@ class AndorCCDReadoutMeasure(Measurement):
         return self.wls
     
     def set_explore_mode(self):
+        self.interrupt()
+        time.sleep(0.1)
         if self.settings['explore_mode']:
-            self.hw.settings['connected'] = True
-            self.interrupt_measurement_called = True
+            if not self.hw.settings['connected']: 
+                self.hw.settings['connected'] = True
+                self.hw.read_from_hardware()
             time.sleep(0.1)
-            # store settings
+            # store hw and measurement settings
             self.ccd_state0 = {}
             for lqname, lq in self.hw.settings.as_dict().items():
                 self.ccd_state0.update({lqname:lq.val})                
@@ -392,18 +409,16 @@ class AndorCCDReadoutMeasure(Measurement):
             self.settings['continuous'] = True
             self.settings['activation'] = True
         else:
-            print(self.settings['explore_mode'])
-
-            self.interrupt_measurement_called = True
-            time.sleep(0.1)
-            # set previous settings
-            for lqname, val in self.ccd_state0.items():
-                if lqname=='connected':
-                    continue
-                self.hw.settings[lqname] = val      
-            self.settings['continuous'] = self.continuous0           
-            self.settings['save_h5'] = self.save_h50
-            self.settings['activation'] = self.activation0           
+            # set to previous (stored) settings
+            if hasattr(self, 'ccd_state0'):
+                for lqname, val in self.ccd_state0.items():
+                    if lqname in ['connected']: #exclude some settings 
+                        continue
+                    else:
+                        self.hw.settings[lqname] = val      
+                self.settings['continuous'] = self.continuous0           
+                self.settings['save_h5'] = self.save_h50
+                self.settings['activation'] = self.activation0           
 
                   
                   
@@ -485,6 +500,7 @@ class AndorCCDStepAndGlue(Measurement):
                     break
                 
                 #TODO add progress update
+                
 
                 # move to center wl
                 acton_spec_hc.center_wl.update_value(center_wl)
