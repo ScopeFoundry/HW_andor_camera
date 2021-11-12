@@ -24,7 +24,7 @@ class AndorCCDHW(HardwareComponent):
         self.temperature = self.add_logged_quantity(name="temperature", dtype=int,
                                                     ro=True, unit = "C", vmin = -300, vmax = 300, si=False)
         
-        self.settings.New('temp_setpoint', dtype=int, unit="C", vmin = -300, vmax = 300, si=False)
+        self.settings.New('temp_setpoint', dtype=int, unit="C", vmin = -300, vmax = 300, initial=-10, si=False)
         self.settings.New('temp_status', dtype=str, ro=True, initial="?",)
         
         self.cooler_on = self.add_logged_quantity(name="cooler_on", dtype=bool, ro=False, initial=True)
