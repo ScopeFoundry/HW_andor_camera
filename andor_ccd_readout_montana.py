@@ -1,9 +1,11 @@
 import numpy as np
 import time
 import pyqtgraph as pg
+import os
 
 from ScopeFoundry import Measurement 
 
+#import matplotlib.gridspec as gridspec 
 from time import sleep
 
 from ScopeFoundry import h5_io
@@ -38,9 +40,9 @@ from ScopeFoundry.helper_funcs import load_qt_ui_file, sibling_path
 #                       + np.sin(psi+0.5*gamma+eta)))
 
 
-class AndorCCDReadoutMeasure(Measurement):
+class AndorCCDReadoutMeasureMontana(Measurement):
 
-    name = "andor_ccd_readout"
+    name = "andor_ccd_readout_montana"
     
     def setup(self):
         
@@ -55,13 +57,6 @@ class AndorCCDReadoutMeasure(Measurement):
         self.settings.New('save_h5', dtype=bool, initial=True)
 
         self.settings.New('wl_calib', dtype=str, initial='pixels', choices=('pixels','raw_pixels','acton_spectrometer', 'andor_spectrometer'))
-        self.settings.New('explore_mode_exposure_time', initial=0.1, unit='sec', spinbox_decimals=4,
-                          description='integration time for <b>explore mode</b>.')
-        self.settings.New('explore_mode', bool, initial=False,
-                          description='''continuous readout using <b>explore_mode_exposure_time</b> 
-                                         and <b>acq_mode</b>=<i>single</i>. Does <b>NOT</b> save data. 
-                                         Interruption restores previous camera settings.''')
-        self.settings.explore_mode.add_listener(self.set_explore_mode)
         
         self.add_operation('run_acquire_bg', self.acquire_bg_start)
         self.add_operation('run_acquire_single', self.acquire_single_start)
@@ -112,32 +107,35 @@ class AndorCCDReadoutMeasure(Measurement):
         #    self.graph_layout.deleteLater() # see http://stackoverflow.com/questions/9899409/pyside-removing-a-widget-from-a-layout
         #    del self.graph_layout
             
-        ui = self.ui = load_qt_ui_file(sibling_path(__file__, 'andor_ccd_readout.ui'))
+        ui = self.ui = load_qt_ui_file(sibling_path(__file__, 'andor_ccd_readout_montana.ui'))
         
         ## ui connection
         self.hw = andor = self.app.hardware['andor_ccd']
+        self.hw_spectro=self.app.hardware['andor_spec']
         andor.settings.exposure_time.connect_to_widget(ui.andor_ccd_int_time_doubleSpinBox)
         andor.settings.em_gain.connect_to_widget(ui.andor_ccd_emgain_doubleSpinBox)
         andor.settings.temperature.connect_to_widget(ui.andor_ccd_temp_doubleSpinBox)
         andor.settings.ccd_status.connect_to_widget(ui.andor_ccd_status_label)
         andor.settings.shutter_open.connect_to_widget(ui.andor_ccd_shutter_open_checkBox)
-        
-        self.settings.continuous.connect_to_widget(ui.andor_ccd_continuous_checkBox)
-        self.settings.explore_mode.connect_to_pushButton(ui.run_explore_mode_pushButton, 
-                                                         colors=['yellow', 'orange'], 
-                                                         texts=['run explore mode', 'interrupt explore mode'])
-        self.settings.explore_mode_exposure_time.connect_to_widget(ui.explore_mode_exposure_time_doubleSpinBox)
+        andor.settings.acq_mode.connect_to_widget(ui.AcquisitionMode_comboBox)
+        andor.settings.num_acc.connect_to_widget(ui.Acc_Num_doubleSpinBox)
+        andor.settings.readout_mode.connect_to_widget(ui.readout_mode_comboBox)
+        ui.readout_mode_comboBox.currentTextChanged.connect(andor.set_readout)
         
         self.settings.bg_subtract.connect_to_widget(ui.andor_ccd_bgsub_checkBox)
         ui.andor_ccd_acq_bg_pushButton.clicked.connect(self.acquire_bg_start)
-        self.settings.activation.connect_to_pushButton(ui.andor_ccd_start_pushButton)
-        #ui.andor_ccd_start_pushButton.clicked.connect(self.start)
-        #ui.andor_ccd_interrupt_pushButton.clicked.connect(self.interrupt)
+        ui.andor_ccd_start_pushButton.clicked.connect(self.acquire_to_save)
+        ui.andor_ccd_interrupt_pushButton.clicked.connect(self.interrupt)
+        ui.andor_ccd_run_pushButton.clicked.connect(self.run_continuously)
+        self.settings.progress.connect_to_widget(self.ui.acquisition_progressBar)
         
         andor.settings.temp_status.connect_to_widget(self.ui.temp_status_label)
         andor.settings.temp_setpoint.connect_to_widget(self.ui.temp_setpoint_doubleSpinBox)
+        self.hw_spectro.settings.grating_id.connect_to_widget(self.ui.gratings_comboBox)
+        self.hw_spectro.settings.input_flipper.connect_to_widget(self.ui.Spectro_in_ComboBox)
+        self.hw_spectro.settings.output_flipper.connect_to_widget(self.ui.Spectro_out_ComboBox)
+        self.hw_spectro.settings.center_wl.connect_to_widget(self.ui.center_wl)
         
-        self.settings.save_h5.connect_to_widget(self.ui.save_h5_checkBox)
         
         andor.settings.connected.connect_to_widget(self.ui.hw_connect_checkBox)
         
@@ -171,36 +169,58 @@ class AndorCCDReadoutMeasure(Measurement):
         self.hist_lut.autoHistogramRange()
         self.hist_lut.setImageItem(self.img_item)
         self.img_layout.addItem(self.hist_lut)
-        self.ui.image_view_checkBox.setCheckState(False) #hide first.
+
+        #set the horizontal lines in the plot for binning
+        self.lower_vbin_limLine=pg.InfiniteLine(pos=0, angle=0,movable=True, bounds=[0,200])
+        self.lower_vbin_limLine.addMarker('<|')
+        self.img_plot.addItem(self.lower_vbin_limLine)
+        self.lower_vbin_limLine.sigPositionChanged.connect(self.set_vbin_area)
+        
+        self.upper_vbin_limLine=pg.InfiniteLine(pos=200, angle=0,movable=True,bounds=[0,200])
+        self.upper_vbin_limLine.addMarker('|>')
+        self.img_plot.addItem(self.upper_vbin_limLine)
+        self.upper_vbin_limLine.sigPositionChanged.connect(self.set_vbin_area)
+        
+        self.hw.settings.roi_st_center.add_listener(self.set_vbin_lines)
+        self.hw.settings.roi_st_width.add_listener(self.set_vbin_lines)
                 
         ### CCD settings
         self.cam_controls = self.app.hardware['andor_ccd'].settings.New_UI(style='scroll_form')
         self.ui.ccd_settings_GroupBox.layout().addWidget(self.cam_controls)
-        self.ui.show_ccd_settings_checkBox.setCheckState(False) #hide first.
-        
+
+
+
         
     def on_change_show_line(self):
         if self.settings['show_line']:
             self.spec_plot.addItem(self.spec_infline)
         else:
             self.spec_plot.removeItem(self.spec_infline)
+    
 
     def run(self):
-
+    
+        #setup data arrays         
+        
         ccd_hw = self.app.hardware['andor_ccd']
         ccd_dev = ccd_hw.ccd_dev
         
         width_px = ccd_dev.Nx_ro
         height_px = ccd_dev.Ny_ro
         
+        #ccd_hw.settings['acq_mode'] = 'single'
         ccd_hw.settings['trigger_mode'] = 'internal'
         
+        
         t_acq = self.app.hardware['andor_ccd'].settings['exposure_time'] #in seconds
-        
         wait_time = 0.01 #np.min(1.0,np.max(0.05*t_acq, 0.05)) # limit update period to 50ms (in ms) or as slow as 1sec
-        
-        # print('andor_ccd_readout run')
-            
+        meas_time=t_acq+0.05 #0.05s buffer added for the readout time of the camera
+        if ccd_hw.settings['acq_mode'] == 'accumulate':
+            meas_time= (t_acq)*ccd_hw.settings['num_acc']
+
+        # print('andor_ccd_readout run')\
+
+                        
         try:
             self.log.info("starting acq")
             
@@ -210,6 +230,8 @@ class AndorCCDReadoutMeasure(Measurement):
             self.log.info( "checking..." )
             t0 = time.time()
 
+        
+
 #             if 'acton_spectrometer' in self.app.hardware and self.app.hardware['acton_spectrometer'].settings['connected']:
 #                 self.wls  = self.pixel2wavelength(
 #                               self.app.hardware['acton_spectrometer'].settings['center_wl'], 
@@ -217,7 +239,6 @@ class AndorCCDReadoutMeasure(Measurement):
 #                               #, binning=ccd_dev.get_current_hbin())
 #             else:
 #                 self.wls = np.arange(width_px)
-
 
             while not self.interrupt_measurement_called:
 
@@ -230,20 +251,30 @@ class AndorCCDReadoutMeasure(Measurement):
                 elif wl_calib=='andor_spectrometer':
                     px_index = np.arange(width_px)
                     spec_hw = self.app.hardware['andor_spec']
-                    self.wls = spec_hw.get_wl_calibration(px_index, hbin)   
+                    if self.ui.Wavelength_Energy_Combobox.currentText()=='Energy':
+                        self.wls= 1239.84/spec_hw.get_wl_calibration(px_index, hbin)
+                        self.xLabel='Energy(eV)'
+                    else:
+                        self.wls = spec_hw.get_wl_calibration(px_index, hbin)
+                        self.xLabel='Wavelength (nm)'  
                 elif wl_calib=='pixels':
                     binning = hbin
                     px_index = np.arange(width_px)
                     self.wls = binned_px = binning*px_index + 0.5*(binning-1)
+                    self.xLabel='Pixels'
                 elif wl_calib=='raw_pixels':
                     self.wls = np.arange(width_px)
+                    self.xLabel='Pixels'
                 else:
                     self.wls = np.arange(width_px)
-
+                    self.xLabel='Pixels'
             
                 stat = ccd_hw.settings.ccd_status.read_from_hardware()
+
                 if stat == 'IDLE':
                     # grab data
+                    t0=time.time()
+
                     self.buffer_ = ccd_hw.get_acquired_data()
                                         
                     #print('andor_ccd buffer', self.buffer_.shape, ccd_dev.buffer.shape)
@@ -251,6 +282,7 @@ class AndorCCDReadoutMeasure(Measurement):
                     if ccd_hw.settings['acq_mode'] == 'accumulate':
                         self.buffer_ = self.buffer_ / ccd_hw.settings['num_acc']
                         print(self.name, 'buffer division', self.buffer_[0][0])
+                        
                                         
                     if self.bg_subtract.val and not self.acquire_bg.val:
                         bg = ccd_hw.background
@@ -265,36 +297,24 @@ class AndorCCDReadoutMeasure(Measurement):
                     #print(self.name, 'after bg', self.buffer_[0][0])
 
                     self.spectra_data = np.average(self.buffer_, axis=0)
-                    self.settings['count_rate'] = np.sum(self.spectra_data)/t_acq
+                    self.settings['count_rate'] = np.sum(self.spectra_data)/t_acq                 
+       
  
                     if self.acquire_bg.val or not self.settings.continuous.val:
                         break # end the while loop for non-continuous scans
                     else:
                         # restart acq
                         ccd_dev.start_acquisition()
-
-                    if t_acq > 0.1:
-                        self.set_progress(0)
-                        t0 = time.time()
-
                     
                 else:
                     #sleep(wait_time)
                     #print("GetTotalNumberImagesAcquired", ccd_dev.get_total_number_images_acquired())
                     #print("get_number_new_images", ccd_dev.get_number_new_images())
                     #print("get_number_available_images", ccd_dev.get_number_available_images())
-
-
-                    if t_acq > 0.1:    
-                        if ccd_hw.settings['acq_mode'] == 'accumulate':
-                            pct = 100 * (time.time()-t0)/(t_acq * ccd_hw.settings['num_acc'])
-                        else:
-                            pct = 100 * (time.time()-t0)/t_acq
-                        self.set_progress(pct)
-
-                    sleep(0.01)
                     
-                    
+                    finished_percent=np.ceil((time.time()-t0)/meas_time*100)
+                    self.settings['progress']=finished_percent
+
                     try:
                         ccd_hw.settings.temperature.read_from_hardware()
                         ccd_hw.settings.temp_status.read_from_hardware()
@@ -304,9 +324,9 @@ class AndorCCDReadoutMeasure(Measurement):
         #    self.log.error( "{} error: {}".format(self.name, err))
         finally:            
             # while-loop is complete
+            self.stop_mainthread_queue=True
             ccd_hw.interrupt_acquisition()
-
-            
+           
             #is this right place to put this?
             # Signal emission from other threads ok?
             #self.measurement_state_changed.emit(False)
@@ -336,6 +356,12 @@ class AndorCCDReadoutMeasure(Measurement):
                     H['spectrum'] = self.spectrum
                 
                     self.h5_file.close()
+                    
+                    if self.hw.settings['readout_mode']=='Image':
+                        t = time.localtime(time.time())
+                        t_string = "{:02d}{:02d}{:02d}_{:02d}{:02d}{:02d}".format(int(str(t[0])[2:4]), t[1], t[2], t[3], t[4], t[5])
+                        fname = os.path.join(self.app.settings['save_dir'], "%s_%s_%s" % (t_string,self.app.settings.sample.val, self.name))
+                        self.img_item.save(fname + ".tif")
 
                 # NPZ data file
                 if False: 
@@ -364,6 +390,8 @@ class AndorCCDReadoutMeasure(Measurement):
             ccd_hw.settings.temperature.read_from_hardware()
             ccd_hw.settings.temp_status.read_from_hardware()
 
+
+    
     def update_display(self):
         if hasattr(self, 'buffer_'):
             #print('update_display', self.buffer_.shape)
@@ -377,48 +405,45 @@ class AndorCCDReadoutMeasure(Measurement):
                 self.hist_lut.imageChanged(autoLevel=True, autoRange=True)
                 y = self.buffer_[:,:,:].sum(axis=(0,1))
 
-            x = self.wls        
-            
+            x = self.wls       
             self.spec_plot_line.setData(x,y)
+            self.spec_plot.setLabel('bottom',self.xLabel)
+            self.spec_plot.setLabel('left','Counts')
     
     def get_spectrum(self):
         return np.squeeze(self.spectrum)
     
     def get_wavelengths(self):
         return self.wls
-    
-    def set_explore_mode(self):
-        self.interrupt()
-        time.sleep(0.1)
-        if self.settings['explore_mode']:
-            if not self.hw.settings['connected']: 
-                self.hw.settings['connected'] = True
-                self.hw.read_from_hardware()
-            time.sleep(0.1)
-            # store hw and measurement settings
-            self.ccd_state0 = {}
-            for lqname, lq in self.hw.settings.as_dict().items():
-                self.ccd_state0.update({lqname:lq.val})                
-            self.continuous0 = self.settings['continuous']
-            self.activation0 = self.settings['activation']
-            self.save_h50 = self.settings['save_h5']            
-            # set fast readout settings
-            self.hw.settings['exposure_time'] = self.settings['explore_mode_exposure_time']
-            self.hw.settings['acq_mode'] = 'single'            
-            self.settings['save_h5'] = False
-            self.settings['continuous'] = True
-            self.settings['activation'] = True
-        else:
-            # set to previous (stored) settings
-            if hasattr(self, 'ccd_state0'):
-                for lqname, val in self.ccd_state0.items():
-                    if lqname in ['connected']: #exclude some settings 
-                        continue
-                    else:
-                        self.hw.settings[lqname] = val      
-                self.settings['continuous'] = self.continuous0           
-                self.settings['save_h5'] = self.save_h50
-                self.settings['activation'] = self.activation0           
+
+    def run_continuously(self):
+        self.settings['continuous']=True
+        self.settings['save_h5']=False
+        self.start()
+
+    def acquire_to_save(self):
+        self.settings['continuous']=False
+        self.settings['save_h5']=True
+        self.start()
+
+    def set_vbin_area(self):
+        width=abs(np.round(self.upper_vbin_limLine.getPos()[1])-np.round(self.lower_vbin_limLine.getPos()[1]))
+        center=np.ceil(width/2)+min(np.round(self.upper_vbin_limLine.getPos()[1]),np.round(self.lower_vbin_limLine.getPos()[1]))
+        self.hw.settings['roi_st_center']=center
+        self.hw.settings['roi_st_width']=width
+        
+
+    def set_vbin_lines(self):
+        if hasattr(self, 'lower_vbin_limLine') and hasattr(self, 'upper_vbin_limLine'):
+            width=self.hw.settings['roi_st_width']
+            center=self.hw.settings['roi_st_center']
+            self.lower_vbin_limLine.setPos(center-np.ceil(width/2))
+            self.upper_vbin_limLine.setPos(center+np.floor(width/2))
+
+    def update_acquisitionProgressBar(self, value):
+        self.ui.acquisitionProgressBar.setValue(value)
+        
+           
 
                   
                   
@@ -500,7 +525,6 @@ class AndorCCDStepAndGlue(Measurement):
                     break
                 
                 #TODO add progress update
-                
 
                 # move to center wl
                 acton_spec_hc.center_wl.update_value(center_wl)
@@ -543,3 +567,8 @@ class AndorCCDStepAndGlue(Measurement):
     
     def get_wavelengths(self):
         return self.wls
+
+
+
+
+    
