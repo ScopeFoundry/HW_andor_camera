@@ -8,6 +8,7 @@ from time import sleep
 
 from ScopeFoundry import h5_io
 from ScopeFoundry.helper_funcs import load_qt_ui_file, sibling_path
+from qtpy import QtCore
 
 # ROW0 = 240
 # ROW1 = 271
@@ -171,12 +172,12 @@ class AndorCCDReadoutMeasure(Measurement):
         self.hist_lut.autoHistogramRange()
         self.hist_lut.setImageItem(self.img_item)
         self.img_layout.addItem(self.hist_lut)
-        self.ui.image_view_checkBox.setCheckState(False) #hide first.
+        self.ui.image_view_checkBox.setCheckState(QtCore.Qt.CheckState.Unchecked) #hide first.
                 
         ### CCD settings
         self.cam_controls = self.app.hardware['andor_ccd'].settings.New_UI(style='scroll_form')
         self.ui.ccd_settings_GroupBox.layout().addWidget(self.cam_controls)
-        self.ui.show_ccd_settings_checkBox.setCheckState(False) #hide first.
+        self.ui.show_ccd_settings_checkBox.setCheckState(QtCore.Qt.CheckState.Unchecked) #hide first.
         
         
     def on_change_show_line(self):
