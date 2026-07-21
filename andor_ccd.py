@@ -12,9 +12,11 @@ except Exception as err:
     print("Could not load modules needed for AndorCCD:", err)
 
 class AndorCCDHW(HardwareComponent):
+
+    name = "andor_ccd"
     
     def setup(self):
-        self.name = "andor_ccd"
+        
         self.debug = True
         self.background = None
         
@@ -336,7 +338,7 @@ class AndorCCDHW(HardwareComponent):
             
             del self.ccd_dev
         
-        self.is_connected = False
+        # self.is_connected = False
     
     def is_background_valid(self):
         bg = self.background
